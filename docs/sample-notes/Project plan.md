@@ -1,0 +1,13 @@
+---
+toggl-project: Code
+tags: [project]
+---
+# Project plan
+
+Ship the sync fix this week.
+
+- [ ] Reproduce the sync bug on a phone
+- [ ] Write the test
+- [ ] Release the patch
+
+Start the timer for this note with the command "Start timer for this note". The property `toggl-project` picks the project (Pro).

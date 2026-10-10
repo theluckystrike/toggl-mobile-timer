@@ -1,0 +1,2362 @@
+{
+ "slug": "toggl-mobile-timer",
+ "module": "toggl-mobile-timer/src/logic",
+ "function": "evalVector",
+ "note": "args = [fn, args]: fn names an exported function of src/logic.ts and args is its argument list, so each case is {name, fn, args, expected}. Times are fixed instants; day cases use UTC, UTC+7 (420) and UTC-5 (-300). Expected values are written by hand; millisecond values come from Python datetime, not from the TypeScript code. Toggl rules checked here: 30 requests an hour on the free plan, HTTP 402 when the quota is used up, HTTP 429 from the leaky bucket, back off and do not repeat (engineering.toggl.com/docs/track/, support.toggl.com/api-webhook-limits; raw copies in research/obsidian-run/raw/u8b).",
+ "cases": [
+  {
+   "name": "clock zero",
+   "fn": "formatClock",
+   "args": [
+    0
+   ],
+   "expected": "0:00:00"
+  },
+  {
+   "name": "clock under a minute",
+   "fn": "formatClock",
+   "args": [
+    59
+   ],
+   "expected": "0:00:59"
+  },
+  {
+   "name": "clock 1h 2m 5s",
+   "fn": "formatClock",
+   "args": [
+    3725
+   ],
+   "expected": "1:02:05"
+  },
+  {
+   "name": "clock last second of a day",
+   "fn": "formatClock",
+   "args": [
+    86399
+   ],
+   "expected": "23:59:59"
+  },
+  {
+   "name": "clock past 99 hours keeps counting",
+   "fn": "formatClock",
+   "args": [
+    360000
+   ],
+   "expected": "100:00:00"
+  },
+  {
+   "name": "clock negative is zero",
+   "fn": "formatClock",
+   "args": [
+    -5
+   ],
+   "expected": "0:00:00"
+  },
+  {
+   "name": "hours zero",
+   "fn": "formatHours",
+   "args": [
+    0
+   ],
+   "expected": "0m"
+  },
+  {
+   "name": "hours cut seconds",
+   "fn": "formatHours",
+   "args": [
+    59
+   ],
+   "expected": "0m"
+  },
+  {
+   "name": "hours one minute",
+   "fn": "formatHours",
+   "args": [
+    60
+   ],
+   "expected": "1m"
+  },
+  {
+   "name": "hours 45 minutes",
+   "fn": "formatHours",
+   "args": [
+    2700
+   ],
+   "expected": "45m"
+  },
+  {
+   "name": "hours exactly one hour pads minutes",
+   "fn": "formatHours",
+   "args": [
+    3600
+   ],
+   "expected": "1h 00m"
+  },
+  {
+   "name": "hours 2h 05m",
+   "fn": "formatHours",
+   "args": [
+    7500
+   ],
+   "expected": "2h 05m"
+  },
+  {
+   "name": "decimal hours 1.5",
+   "fn": "decimalHours",
+   "args": [
+    5400
+   ],
+   "expected": "1.50"
+  },
+  {
+   "name": "decimal hours rounds to two places",
+   "fn": "decimalHours",
+   "args": [
+    36
+   ],
+   "expected": "0.01"
+  },
+  {
+   "name": "decimal hours zero",
+   "fn": "decimalHours",
+   "args": [
+    0
+   ],
+   "expected": "0.00"
+  },
+  {
+   "name": "basic auth header for token abc",
+   "fn": "basicAuthHeader",
+   "args": [
+    "abc"
+   ],
+   "expected": "Basic YWJjOmFwaV90b2tlbg=="
+  },
+  {
+   "name": "basic auth header for token 197",
+   "fn": "basicAuthHeader",
+   "args": [
+    "1971800d4d82861d8f2c1651fea4d212"
+   ],
+   "expected": "Basic MTk3MTgwMGQ0ZDgyODYxZDhmMmMxNjUxZmVhNGQyMTI6YXBpX3Rva2Vu"
+  },
+  {
+   "name": "stopped entry uses start and stop",
+   "fn": "entrySeconds",
+   "args": [
+    {
+     "id": 1,
+     "workspace_id": 1,
+     "description": "",
+     "start": "2026-10-10T09:00:00Z",
+     "stop": "2026-10-10T09:45:00Z",
+     "duration": 2700,
+     "project_id": null,
+     "project_name": null,
+     "project_color": null,
+     "tags": null
+    },
+    1791621015000
+   ],
+   "expected": 2700
+  },
+  {
+   "name": "running entry counts from the server start time",
+   "fn": "entrySeconds",
+   "args": [
+    {
+     "id": 2,
+     "workspace_id": 1,
+     "description": "",
+     "start": "2026-10-10T08:00:00Z",
+     "stop": null,
+     "duration": -1,
+     "project_id": null,
+     "project_name": null,
+     "project_color": null,
+     "tags": null
+    },
+    1791621015000
+   ],
+   "expected": 1815
+  },
+  {
+   "name": "running entry that starts in the future is zero",
+   "fn": "entrySeconds",
+   "args": [
+    {
+     "id": 3,
+     "workspace_id": 1,
+     "description": "",
+     "start": "2026-10-10T09:00:00Z",
+     "stop": null,
+     "duration": -1,
+     "project_id": null,
+     "project_name": null,
+     "project_color": null,
+     "tags": null
+    },
+    1791621015000
+   ],
+   "expected": 0
+  },
+  {
+   "name": "entry with only a duration uses it",
+   "fn": "entrySeconds",
+   "args": [
+    {
+     "id": 4,
+     "workspace_id": 1,
+     "description": "",
+     "start": "2026-10-10T08:00:00Z",
+     "stop": null,
+     "duration": 600,
+     "project_id": null,
+     "project_name": null,
+     "project_color": null,
+     "tags": null
+    },
+    1791621015000
+   ],
+   "expected": 600
+  },
+  {
+   "name": "bad start time is zero",
+   "fn": "entrySeconds",
+   "args": [
+    {
+     "id": 5,
+     "workspace_id": 1,
+     "description": "",
+     "start": "not a date",
+     "stop": null,
+     "duration": -1,
+     "project_id": null,
+     "project_name": null,
+     "project_color": null,
+     "tags": null
+    },
+    1791621015000
+   ],
+   "expected": 0
+  },
+  {
+   "name": "stop before start is zero",
+   "fn": "entrySeconds",
+   "args": [
+    {
+     "id": 6,
+     "workspace_id": 1,
+     "description": "",
+     "start": "2026-10-10T09:00:00Z",
+     "stop": "2026-10-10T08:00:00Z",
+     "duration": 0,
+     "project_id": null,
+     "project_name": null,
+     "project_color": null,
+     "tags": null
+    },
+    1791621015000
+   ],
+   "expected": 0
+  },
+  {
+   "name": "entry across midnight counts only the part inside the day",
+   "fn": "clippedSeconds",
+   "args": [
+    {
+     "id": 7,
+     "workspace_id": 1,
+     "description": "",
+     "start": "2026-10-10T23:30:00Z",
+     "stop": "2026-10-11T00:30:00Z",
+     "duration": 3600,
+     "project_id": null,
+     "project_name": null,
+     "project_color": null,
+     "tags": null
+    },
+    1791621015000,
+    1791676800000,
+    1791763200000
+   ],
+   "expected": 1800
+  },
+  {
+   "name": "entry across midnight, first day",
+   "fn": "clippedSeconds",
+   "args": [
+    {
+     "id": 7,
+     "workspace_id": 1,
+     "description": "",
+     "start": "2026-10-10T23:30:00Z",
+     "stop": "2026-10-11T00:30:00Z",
+     "duration": 3600,
+     "project_id": null,
+     "project_name": null,
+     "project_color": null,
+     "tags": null
+    },
+    1791621015000,
+    1791590400000,
+    1791676800000
+   ],
+   "expected": 1800
+  },
+  {
+   "name": "entry outside the range is zero",
+   "fn": "clippedSeconds",
+   "args": [
+    {
+     "id": 8,
+     "workspace_id": 1,
+     "description": "",
+     "start": "2026-10-09T10:00:00Z",
+     "stop": "2026-10-09T11:00:00Z",
+     "duration": 3600,
+     "project_id": null,
+     "project_name": null,
+     "project_color": null,
+     "tags": null
+    },
+    1791621015000,
+    1791676800000,
+    1791763200000
+   ],
+   "expected": 0
+  },
+  {
+   "name": "total of a day: 45 min + 1h + running 30m15s",
+   "fn": "totalSeconds",
+   "args": [
+    [
+     {
+      "id": 1,
+      "workspace_id": 1,
+      "description": "",
+      "start": "2026-10-10T01:00:00Z",
+      "stop": "2026-10-10T01:45:00Z",
+      "duration": 2700,
+      "project_id": null,
+      "project_name": null,
+      "project_color": null,
+      "tags": null
+     },
+     {
+      "id": 2,
+      "workspace_id": 1,
+      "description": "",
+      "start": "2026-10-10T05:00:00Z",
+      "stop": "2026-10-10T06:00:00Z",
+      "duration": 3600,
+      "project_id": null,
+      "project_name": null,
+      "project_color": null,
+      "tags": null
+     },
+     {
+      "id": 3,
+      "workspace_id": 1,
+      "description": "",
+      "start": "2026-10-10T08:00:00Z",
+      "stop": null,
+      "duration": -1,
+      "project_id": null,
+      "project_name": null,
+      "project_color": null,
+      "tags": null
+     }
+    ],
+    1791621015000,
+    1791590400000,
+    1791676800000
+   ],
+   "expected": 8115
+  },
+  {
+   "name": "total of nothing is zero",
+   "fn": "totalSeconds",
+   "args": [
+    [],
+    1791621015000,
+    1791590400000,
+    1791676800000
+   ],
+   "expected": 0
+  },
+  {
+   "name": "day bounds in UTC",
+   "fn": "dayBounds",
+   "args": [
+    1791621015000,
+    0
+   ],
+   "expected": {
+    "fromMs": 1791590400000,
+    "toMs": 1791676800000
+   }
+  },
+  {
+   "name": "day bounds in UTC+7 after local midnight",
+   "fn": "dayBounds",
+   "args": [
+    1791662400000,
+    420
+   ],
+   "expected": {
+    "fromMs": 1791651600000,
+    "toMs": 1791738000000
+   }
+  },
+  {
+   "name": "day bounds in UTC-5 before UTC midnight",
+   "fn": "dayBounds",
+   "args": [
+    1791601200000,
+    -300
+   ],
+   "expected": {
+    "fromMs": 1791522000000,
+    "toMs": 1791608400000
+   }
+  },
+  {
+   "name": "range today",
+   "fn": "rangeFor",
+   "args": [
+    "today",
+    1791621015000,
+    0,
+    1
+   ],
+   "expected": {
+    "kind": "today",
+    "fromMs": 1791590400000,
+    "toMs": 1791676800000,
+    "label": "2026-10-10"
+   }
+  },
+  {
+   "name": "range yesterday",
+   "fn": "rangeFor",
+   "args": [
+    "yesterday",
+    1791621015000,
+    0,
+    1
+   ],
+   "expected": {
+    "kind": "yesterday",
+    "fromMs": 1791504000000,
+    "toMs": 1791590400000,
+    "label": "2026-10-09"
+   }
+  },
+  {
+   "name": "range week starts on Monday (2026-10-10 is a Saturday)",
+   "fn": "rangeFor",
+   "args": [
+    "week",
+    1791621015000,
+    0,
+    1
+   ],
+   "expected": {
+    "kind": "week",
+    "fromMs": 1791158400000,
+    "toMs": 1791763200000,
+    "label": "week of 2026-10-05"
+   }
+  },
+  {
+   "name": "range week starts on Sunday",
+   "fn": "rangeFor",
+   "args": [
+    "Week",
+    1791621015000,
+    0,
+    0
+   ],
+   "expected": {
+    "kind": "week",
+    "fromMs": 1791072000000,
+    "toMs": 1791676800000,
+    "label": "week of 2026-10-04"
+   }
+  },
+  {
+   "name": "range month",
+   "fn": "rangeFor",
+   "args": [
+    "month",
+    1791621015000,
+    0,
+    1
+   ],
+   "expected": {
+    "kind": "month",
+    "fromMs": 1790812800000,
+    "toMs": 1793491200000,
+    "label": "2026-10"
+   }
+  },
+  {
+   "name": "range last 7 days ends at the end of today",
+   "fn": "rangeFor",
+   "args": [
+    "last7",
+    1791621015000,
+    0,
+    1
+   ],
+   "expected": {
+    "kind": "last7",
+    "fromMs": 1791072000000,
+    "toMs": 1791676800000,
+    "label": "last 7 days"
+   }
+  },
+  {
+   "name": "range custom includes the last day",
+   "fn": "rangeFor",
+   "args": [
+    "2026-10-01..2026-10-03",
+    1791621015000,
+    0,
+    1
+   ],
+   "expected": {
+    "kind": "custom",
+    "fromMs": 1790812800000,
+    "toMs": 1791072000000,
+    "label": "2026-10-01 to 2026-10-03"
+   }
+  },
+  {
+   "name": "range custom in UTC+7 starts at local midnight",
+   "fn": "rangeFor",
+   "args": [
+    "2026-10-01..2026-10-01",
+    1791621015000,
+    420,
+    1
+   ],
+   "expected": {
+    "kind": "custom",
+    "fromMs": 1790787600000,
+    "toMs": 1790874000000,
+    "label": "2026-10-01 to 2026-10-01"
+   }
+  },
+  {
+   "name": "range unknown word is null",
+   "fn": "rangeFor",
+   "args": [
+    "next week",
+    1791621015000,
+    0,
+    1
+   ],
+   "expected": null
+  },
+  {
+   "name": "range reversed dates is null",
+   "fn": "rangeFor",
+   "args": [
+    "2026-10-05..2026-10-01",
+    1791621015000,
+    0,
+    1
+   ],
+   "expected": null
+  },
+  {
+   "name": "range impossible date is null",
+   "fn": "rangeFor",
+   "args": [
+    "2026-02-30..2026-03-01",
+    1791621015000,
+    0,
+    1
+   ],
+   "expected": null
+  },
+  {
+   "name": "group by project, biggest first, empty project named",
+   "fn": "groupSeconds",
+   "args": [
+    [
+     {
+      "id": 1,
+      "workspace_id": 1,
+      "description": "Write docs",
+      "start": "2026-10-10T01:00:00Z",
+      "stop": "2026-10-10T02:00:00Z",
+      "duration": 3600,
+      "project_id": 11,
+      "project_name": "Docs",
+      "project_color": "#06a893",
+      "tags": null
+     },
+     {
+      "id": 2,
+      "workspace_id": 1,
+      "description": "Fix bug",
+      "start": "2026-10-10T03:00:00Z",
+      "stop": "2026-10-10T03:30:00Z",
+      "duration": 1800,
+      "project_id": 12,
+      "project_name": "Code",
+      "project_color": "#c7561e",
+      "tags": null
+     },
+     {
+      "id": 3,
+      "workspace_id": 1,
+      "description": "Write docs",
+      "start": "2026-10-10T04:00:00Z",
+      "stop": "2026-10-10T04:45:00Z",
+      "duration": 2700,
+      "project_id": 11,
+      "project_name": "Docs",
+      "project_color": "#06a893",
+      "tags": null
+     },
+     {
+      "id": 4,
+      "workspace_id": 1,
+      "description": "",
+      "start": "2026-10-10T05:00:00Z",
+      "stop": "2026-10-10T05:10:00Z",
+      "duration": 600,
+      "project_id": null,
+      "project_name": null,
+      "project_color": null,
+      "tags": null
+     }
+    ],
+    "project",
+    1791621015000,
+    {
+     "fromMs": 1791590400000,
+     "toMs": 1791676800000
+    },
+    0
+   ],
+   "expected": [
+    {
+     "key": "Docs",
+     "seconds": 6300,
+     "color": "#06a893"
+    },
+    {
+     "key": "Code",
+     "seconds": 1800,
+     "color": "#c7561e"
+    },
+    {
+     "key": "No project",
+     "seconds": 600,
+     "color": null
+    }
+   ]
+  },
+  {
+   "name": "group by description merges equal text",
+   "fn": "groupSeconds",
+   "args": [
+    [
+     {
+      "id": 1,
+      "workspace_id": 1,
+      "description": "Write docs",
+      "start": "2026-10-10T01:00:00Z",
+      "stop": "2026-10-10T02:00:00Z",
+      "duration": 3600,
+      "project_id": 11,
+      "project_name": "Docs",
+      "project_color": "#06a893",
+      "tags": null
+     },
+     {
+      "id": 2,
+      "workspace_id": 1,
+      "description": "Fix bug",
+      "start": "2026-10-10T03:00:00Z",
+      "stop": "2026-10-10T03:30:00Z",
+      "duration": 1800,
+      "project_id": 12,
+      "project_name": "Code",
+      "project_color": "#c7561e",
+      "tags": null
+     },
+     {
+      "id": 3,
+      "workspace_id": 1,
+      "description": "Write docs",
+      "start": "2026-10-10T04:00:00Z",
+      "stop": "2026-10-10T04:45:00Z",
+      "duration": 2700,
+      "project_id": 11,
+      "project_name": "Docs",
+      "project_color": "#06a893",
+      "tags": null
+     },
+     {
+      "id": 4,
+      "workspace_id": 1,
+      "description": "",
+      "start": "2026-10-10T05:00:00Z",
+      "stop": "2026-10-10T05:10:00Z",
+      "duration": 600,
+      "project_id": null,
+      "project_name": null,
+      "project_color": null,
+      "tags": null
+     }
+    ],
+    "description",
+    1791621015000,
+    {
+     "fromMs": 1791590400000,
+     "toMs": 1791676800000
+    },
+    0
+   ],
+   "expected": [
+    {
+     "key": "Write docs",
+     "seconds": 6300,
+     "color": null
+    },
+    {
+     "key": "Fix bug",
+     "seconds": 1800,
+     "color": null
+    },
+    {
+     "key": "(no description)",
+     "seconds": 600,
+     "color": null
+    }
+   ]
+  },
+  {
+   "name": "group by day sorts by date",
+   "fn": "groupSeconds",
+   "args": [
+    [
+     {
+      "id": 1,
+      "workspace_id": 1,
+      "description": "Write docs",
+      "start": "2026-10-10T01:00:00Z",
+      "stop": "2026-10-10T02:00:00Z",
+      "duration": 3600,
+      "project_id": 11,
+      "project_name": "Docs",
+      "project_color": "#06a893",
+      "tags": null
+     },
+     {
+      "id": 2,
+      "workspace_id": 1,
+      "description": "Fix bug",
+      "start": "2026-10-10T03:00:00Z",
+      "stop": "2026-10-10T03:30:00Z",
+      "duration": 1800,
+      "project_id": 12,
+      "project_name": "Code",
+      "project_color": "#c7561e",
+      "tags": null
+     },
+     {
+      "id": 9,
+      "workspace_id": 1,
+      "description": "Old",
+      "start": "2026-10-09T10:00:00Z",
+      "stop": "2026-10-09T10:20:00Z",
+      "duration": 1200,
+      "project_id": 11,
+      "project_name": "Docs",
+      "project_color": "#06a893",
+      "tags": null
+     }
+    ],
+    "day",
+    1791621015000,
+    {
+     "fromMs": 1791504000000,
+     "toMs": 1791676800000
+    },
+    0
+   ],
+   "expected": [
+    {
+     "key": "2026-10-09",
+     "seconds": 1200,
+     "color": null
+    },
+    {
+     "key": "2026-10-10",
+     "seconds": 5400,
+     "color": null
+    }
+   ]
+  },
+  {
+   "name": "group skips entries outside the range",
+   "fn": "groupSeconds",
+   "args": [
+    [
+     {
+      "id": 1,
+      "workspace_id": 1,
+      "description": "Write docs",
+      "start": "2026-10-10T01:00:00Z",
+      "stop": "2026-10-10T02:00:00Z",
+      "duration": 3600,
+      "project_id": 11,
+      "project_name": "Docs",
+      "project_color": "#06a893",
+      "tags": null
+     },
+     {
+      "id": 2,
+      "workspace_id": 1,
+      "description": "Fix bug",
+      "start": "2026-10-10T03:00:00Z",
+      "stop": "2026-10-10T03:30:00Z",
+      "duration": 1800,
+      "project_id": 12,
+      "project_name": "Code",
+      "project_color": "#c7561e",
+      "tags": null
+     },
+     {
+      "id": 9,
+      "workspace_id": 1,
+      "description": "Old",
+      "start": "2026-10-09T10:00:00Z",
+      "stop": "2026-10-09T10:20:00Z",
+      "duration": 1200,
+      "project_id": 11,
+      "project_name": "Docs",
+      "project_color": "#06a893",
+      "tags": null
+     }
+    ],
+    "project",
+    1791621015000,
+    {
+     "fromMs": 1791590400000,
+     "toMs": 1791676800000
+    },
+    0
+   ],
+   "expected": [
+    {
+     "key": "Docs",
+     "seconds": 3600,
+     "color": "#06a893"
+    },
+    {
+     "key": "Code",
+     "seconds": 1800,
+     "color": "#c7561e"
+    }
+   ]
+  },
+  {
+   "name": "bucket of /me is user",
+   "fn": "bucketOf",
+   "args": [
+    "/me"
+   ],
+   "expected": "user"
+  },
+  {
+   "name": "bucket of /me/time_entries with a query is user",
+   "fn": "bucketOf",
+   "args": [
+    "/me/time_entries?meta=true"
+   ],
+   "expected": "user"
+  },
+  {
+   "name": "bucket of a workspace path is org",
+   "fn": "bucketOf",
+   "args": [
+    "/workspaces/9/time_entries"
+   ],
+   "expected": "org"
+  },
+  {
+   "name": "backoff: 402 without reset time starts at 5 minutes",
+   "fn": "backoffMs",
+   "args": [
+    402,
+    0,
+    null,
+    0
+   ],
+   "expected": 300000
+  },
+  {
+   "name": "backoff: 402 doubles",
+   "fn": "backoffMs",
+   "args": [
+    402,
+    1,
+    null,
+    0
+   ],
+   "expected": 600000
+  },
+  {
+   "name": "backoff: 402 doubles again",
+   "fn": "backoffMs",
+   "args": [
+    402,
+    2,
+    null,
+    0
+   ],
+   "expected": 1200000
+  },
+  {
+   "name": "backoff: 402 is capped at 60 minutes",
+   "fn": "backoffMs",
+   "args": [
+    402,
+    6,
+    null,
+    0
+   ],
+   "expected": 3600000
+  },
+  {
+   "name": "backoff: 402 follows the reset header",
+   "fn": "backoffMs",
+   "args": [
+    402,
+    0,
+    120,
+    0
+   ],
+   "expected": 121000
+  },
+  {
+   "name": "backoff: 402 reset header is capped at 60 minutes",
+   "fn": "backoffMs",
+   "args": [
+    402,
+    0,
+    5000,
+    0
+   ],
+   "expected": 3600000
+  },
+  {
+   "name": "backoff: 429 starts at 2 minutes",
+   "fn": "backoffMs",
+   "args": [
+    429,
+    0,
+    null,
+    0
+   ],
+   "expected": 120000
+  },
+  {
+   "name": "backoff: 429 doubles",
+   "fn": "backoffMs",
+   "args": [
+    429,
+    1,
+    null,
+    0
+   ],
+   "expected": 240000
+  },
+  {
+   "name": "backoff: 429 fourth wait",
+   "fn": "backoffMs",
+   "args": [
+    429,
+    3,
+    null,
+    0
+   ],
+   "expected": 960000
+  },
+  {
+   "name": "backoff: 429 is capped at 20 minutes",
+   "fn": "backoffMs",
+   "args": [
+    429,
+    5,
+    null,
+    0
+   ],
+   "expected": 1200000
+  },
+  {
+   "name": "backoff: 5xx starts at 10 seconds",
+   "fn": "backoffMs",
+   "args": [
+    500,
+    0,
+    null,
+    0
+   ],
+   "expected": 10000
+  },
+  {
+   "name": "backoff: 5xx adds jitter up to 10 seconds",
+   "fn": "backoffMs",
+   "args": [
+    503,
+    2,
+    null,
+    0.5
+   ],
+   "expected": 45000
+  },
+  {
+   "name": "backoff: 5xx is capped at 5 minutes",
+   "fn": "backoffMs",
+   "args": [
+    500,
+    6,
+    null,
+    0
+   ],
+   "expected": 300000
+  },
+  {
+   "name": "backoff: no network backs off like a server error",
+   "fn": "backoffMs",
+   "args": [
+    0,
+    0,
+    null,
+    0
+   ],
+   "expected": 10000
+  },
+  {
+   "name": "backoff: 200 needs no wait",
+   "fn": "backoffMs",
+   "args": [
+    200,
+    3,
+    null,
+    0
+   ],
+   "expected": 0
+  },
+  {
+   "name": "backoff: 404 needs no wait",
+   "fn": "backoffMs",
+   "args": [
+    404,
+    0,
+    null,
+    0
+   ],
+   "expected": 0
+  },
+  {
+   "name": "answer 200 stores the quota headers and the request time",
+   "fn": "afterAnswer",
+   "args": [
+    {
+     "remaining": null,
+     "resetsAtMs": null,
+     "blockedUntilMs": 0,
+     "failures": 0,
+     "sent": []
+    },
+    {
+     "status": 200,
+     "remaining": 27,
+     "resetsInSecs": 3000
+    },
+    1000000,
+    0
+   ],
+   "expected": {
+    "remaining": 27,
+    "resetsAtMs": 4000000,
+    "blockedUntilMs": 0,
+    "failures": 0,
+    "sent": [
+     1000000
+    ]
+   }
+  },
+  {
+   "name": "answer 402 blocks until the window resets",
+   "fn": "afterAnswer",
+   "args": [
+    {
+     "remaining": null,
+     "resetsAtMs": null,
+     "blockedUntilMs": 0,
+     "failures": 0,
+     "sent": []
+    },
+    {
+     "status": 402,
+     "remaining": 0,
+     "resetsInSecs": 600
+    },
+    1000000,
+    0
+   ],
+   "expected": {
+    "remaining": 0,
+    "resetsAtMs": 1600000,
+    "blockedUntilMs": 1601000,
+    "failures": 1,
+    "sent": [
+     1000000
+    ]
+   }
+  },
+  {
+   "name": "answer 429 blocks 2 minutes",
+   "fn": "afterAnswer",
+   "args": [
+    {
+     "remaining": null,
+     "resetsAtMs": null,
+     "blockedUntilMs": 0,
+     "failures": 0,
+     "sent": []
+    },
+    {
+     "status": 429
+    },
+    1000000,
+    0
+   ],
+   "expected": {
+    "remaining": null,
+    "resetsAtMs": null,
+    "blockedUntilMs": 1120000,
+    "failures": 1,
+    "sent": [
+     1000000
+    ]
+   }
+  },
+  {
+   "name": "second 429 blocks 4 minutes",
+   "fn": "afterAnswer",
+   "args": [
+    {
+     "remaining": null,
+     "resetsAtMs": null,
+     "blockedUntilMs": 999999,
+     "failures": 1,
+     "sent": []
+    },
+    {
+     "status": 429
+    },
+    1000000,
+    0
+   ],
+   "expected": {
+    "remaining": null,
+    "resetsAtMs": null,
+    "blockedUntilMs": 1240000,
+    "failures": 2,
+    "sent": [
+     1000000
+    ]
+   }
+  },
+  {
+   "name": "answer 404 does not block and keeps the failure count",
+   "fn": "afterAnswer",
+   "args": [
+    {
+     "remaining": null,
+     "resetsAtMs": null,
+     "blockedUntilMs": 0,
+     "failures": 2,
+     "sent": []
+    },
+    {
+     "status": 404
+    },
+    1000000,
+    0
+   ],
+   "expected": {
+    "remaining": null,
+    "resetsAtMs": null,
+    "blockedUntilMs": 0,
+    "failures": 2,
+    "sent": [
+     1000000
+    ]
+   }
+  },
+  {
+   "name": "a good answer clears the failure count and keeps the block",
+   "fn": "afterAnswer",
+   "args": [
+    {
+     "remaining": null,
+     "resetsAtMs": null,
+     "blockedUntilMs": 1005000,
+     "failures": 3,
+     "sent": []
+    },
+    {
+     "status": 200
+    },
+    1000000,
+    0
+   ],
+   "expected": {
+    "remaining": null,
+    "resetsAtMs": null,
+    "blockedUntilMs": 1005000,
+    "failures": 0,
+    "sent": [
+     1000000
+    ]
+   }
+  },
+  {
+   "name": "no network (status 0) blocks 10 seconds",
+   "fn": "afterAnswer",
+   "args": [
+    {
+     "remaining": null,
+     "resetsAtMs": null,
+     "blockedUntilMs": 0,
+     "failures": 0,
+     "sent": []
+    },
+    {
+     "status": 0
+    },
+    1000000,
+    0
+   ],
+   "expected": {
+    "remaining": null,
+    "resetsAtMs": null,
+    "blockedUntilMs": 1010000,
+    "failures": 1,
+    "sent": [
+     1000000
+    ]
+   }
+  },
+  {
+   "name": "sent list drops requests older than an hour",
+   "fn": "afterAnswer",
+   "args": [
+    {
+     "remaining": null,
+     "resetsAtMs": null,
+     "blockedUntilMs": 0,
+     "failures": 0,
+     "sent": [
+      -3000000,
+      999000
+     ]
+    },
+    {
+     "status": 200
+    },
+    1000000,
+    0
+   ],
+   "expected": {
+    "remaining": null,
+    "resetsAtMs": null,
+    "blockedUntilMs": 0,
+    "failures": 0,
+    "sent": [
+     999000,
+     1000000
+    ]
+   }
+  },
+  {
+   "name": "fresh budget lets a request go",
+   "fn": "canSend",
+   "args": [
+    {
+     "remaining": null,
+     "resetsAtMs": null,
+     "blockedUntilMs": 0,
+     "failures": 0,
+     "sent": []
+    },
+    1000000,
+    false
+   ],
+   "expected": {
+    "ok": true,
+    "waitMs": 0,
+    "reason": "ok"
+   }
+  },
+  {
+   "name": "blocked budget says how long to wait",
+   "fn": "canSend",
+   "args": [
+    {
+     "remaining": null,
+     "resetsAtMs": null,
+     "blockedUntilMs": 1005000,
+     "failures": 0,
+     "sent": []
+    },
+    1000000,
+    false
+   ],
+   "expected": {
+    "ok": false,
+    "waitMs": 5000,
+    "reason": "blocked"
+   }
+  },
+  {
+   "name": "background refresh keeps the reserve of 8",
+   "fn": "canSend",
+   "args": [
+    {
+     "remaining": 8,
+     "resetsAtMs": 1060000,
+     "blockedUntilMs": 0,
+     "failures": 0,
+     "sent": []
+    },
+    1000000,
+    true
+   ],
+   "expected": {
+    "ok": false,
+    "waitMs": 60000,
+    "reason": "reserve"
+   }
+  },
+  {
+   "name": "a tap on Start may use the reserve",
+   "fn": "canSend",
+   "args": [
+    {
+     "remaining": 8,
+     "resetsAtMs": 1060000,
+     "blockedUntilMs": 0,
+     "failures": 0,
+     "sent": []
+    },
+    1000000,
+    false
+   ],
+   "expected": {
+    "ok": true,
+    "waitMs": 0,
+    "reason": "ok"
+   }
+  },
+  {
+   "name": "no requests left waits for the window",
+   "fn": "canSend",
+   "args": [
+    {
+     "remaining": 0,
+     "resetsAtMs": 1090000,
+     "blockedUntilMs": 0,
+     "failures": 0,
+     "sent": []
+    },
+    1000000,
+    false
+   ],
+   "expected": {
+    "ok": false,
+    "waitMs": 90000,
+    "reason": "quota"
+   }
+  },
+  {
+   "name": "30 local requests in the last hour wait for the oldest to age out",
+   "fn": "canSend",
+   "args": [
+    {
+     "remaining": null,
+     "resetsAtMs": null,
+     "blockedUntilMs": 0,
+     "failures": 0,
+     "sent": [
+      -2000000,
+      -1999999,
+      -1999998,
+      -1999997,
+      -1999996,
+      -1999995,
+      -1999994,
+      -1999993,
+      -1999992,
+      -1999991,
+      -1999990,
+      -1999989,
+      -1999988,
+      -1999987,
+      -1999986,
+      -1999985,
+      -1999984,
+      -1999983,
+      -1999982,
+      -1999981,
+      -1999980,
+      -1999979,
+      -1999978,
+      -1999977,
+      -1999976,
+      -1999975,
+      -1999974,
+      -1999973,
+      -1999972,
+      -1999971
+     ]
+    },
+    1000000,
+    false
+   ],
+   "expected": {
+    "ok": false,
+    "waitMs": 600000,
+    "reason": "quota"
+   }
+  },
+  {
+   "name": "remaining from a header while its window is open",
+   "fn": "remainingNow",
+   "args": [
+    {
+     "remaining": 12,
+     "resetsAtMs": 1001000,
+     "blockedUntilMs": 0,
+     "failures": 0,
+     "sent": []
+    },
+    1000000
+   ],
+   "expected": 12
+  },
+  {
+   "name": "remaining after the header window ended counts local requests",
+   "fn": "remainingNow",
+   "args": [
+    {
+     "remaining": 12,
+     "resetsAtMs": 999999,
+     "blockedUntilMs": 0,
+     "failures": 0,
+     "sent": [
+      999990,
+      999980,
+      999970
+     ]
+    },
+    1000000
+   ],
+   "expected": 27
+  },
+  {
+   "name": "wait text for 500 ms",
+   "fn": "formatWait",
+   "args": [
+    500
+   ],
+   "expected": "1 s"
+  },
+  {
+   "name": "wait text for 35000 ms",
+   "fn": "formatWait",
+   "args": [
+    35000
+   ],
+   "expected": "35 s"
+  },
+  {
+   "name": "wait text for 60000 ms",
+   "fn": "formatWait",
+   "args": [
+    60000
+   ],
+   "expected": "1 min"
+  },
+  {
+   "name": "wait text for 61000 ms",
+   "fn": "formatWait",
+   "args": [
+    61000
+   ],
+   "expected": "2 min"
+  },
+  {
+   "name": "wait text for 3600000 ms",
+   "fn": "formatWait",
+   "args": [
+    3600000
+   ],
+   "expected": "1 h 0 min"
+  },
+  {
+   "name": "wait text for 3900000 ms",
+   "fn": "formatWait",
+   "args": [
+    3900000
+   ],
+   "expected": "1 h 5 min"
+  },
+  {
+   "name": "cache never fetched is stale",
+   "fn": "isStale",
+   "args": [
+    null,
+    1791621015000,
+    600000,
+    0
+   ],
+   "expected": true
+  },
+  {
+   "name": "cache 5 minutes old with a 10 minute limit is fresh",
+   "fn": "isStale",
+   "args": [
+    1791620715000,
+    1791621015000,
+    600000,
+    0
+   ],
+   "expected": false
+  },
+  {
+   "name": "cache 10 minutes old is stale",
+   "fn": "isStale",
+   "args": [
+    1791620415000,
+    1791621015000,
+    600000,
+    0
+   ],
+   "expected": true
+  },
+  {
+   "name": "clock set back makes the cache stale",
+   "fn": "isStale",
+   "args": [
+    1791621016000,
+    1791621015000,
+    600000,
+    0
+   ],
+   "expected": true
+  },
+  {
+   "name": "cache from before local midnight is stale",
+   "fn": "isStale",
+   "args": [
+    1791651480000,
+    1791651720000,
+    600000,
+    420
+   ],
+   "expected": true
+  },
+  {
+   "name": "cache from the same local day is fresh",
+   "fn": "isStale",
+   "args": [
+    1791651720000,
+    1791651900000,
+    600000,
+    420
+   ],
+   "expected": false
+  },
+  {
+   "name": "replay: start then stop is one finished entry",
+   "fn": "planReplay",
+   "args": [
+    [
+     {
+      "kind": "start",
+      "atMs": 1791622800000,
+      "description": "A",
+      "projectId": 3,
+      "tags": []
+     },
+     {
+      "kind": "stop",
+      "atMs": 1791624600000
+     }
+    ],
+    null
+   ],
+   "expected": [
+    {
+     "step": "create",
+     "startMs": 1791622800000,
+     "stopMs": 1791624600000,
+     "description": "A",
+     "projectId": 3,
+     "tags": []
+    }
+   ]
+  },
+  {
+   "name": "replay: a lone start stays running",
+   "fn": "planReplay",
+   "args": [
+    [
+     {
+      "kind": "start",
+      "atMs": 1791622800000,
+      "description": "Work",
+      "projectId": null,
+      "tags": []
+     }
+    ],
+    null
+   ],
+   "expected": [
+    {
+     "step": "create",
+     "startMs": 1791622800000,
+     "stopMs": null,
+     "description": "Work",
+     "projectId": null,
+     "tags": []
+    }
+   ]
+  },
+  {
+   "name": "replay: a second start ends the first",
+   "fn": "planReplay",
+   "args": [
+    [
+     {
+      "kind": "start",
+      "atMs": 1791622800000,
+      "description": "A",
+      "projectId": null,
+      "tags": []
+     },
+     {
+      "kind": "start",
+      "atMs": 1791624000000,
+      "description": "B",
+      "projectId": null,
+      "tags": []
+     }
+    ],
+    null
+   ],
+   "expected": [
+    {
+     "step": "create",
+     "startMs": 1791622800000,
+     "stopMs": 1791624000000,
+     "description": "A",
+     "projectId": null,
+     "tags": []
+    },
+    {
+     "step": "create",
+     "startMs": 1791624000000,
+     "stopMs": null,
+     "description": "B",
+     "projectId": null,
+     "tags": []
+    }
+   ]
+  },
+  {
+   "name": "replay: stop of a timer that runs on Toggl",
+   "fn": "planReplay",
+   "args": [
+    [
+     {
+      "kind": "stop",
+      "atMs": 1791622800000
+     }
+    ],
+    {
+     "id": 77,
+     "workspaceId": 5,
+     "startMs": 1791612000000
+    }
+   ],
+   "expected": [
+    {
+     "step": "stop",
+     "entryId": 77,
+     "workspaceId": 5,
+     "startMs": 1791612000000,
+     "atMs": 1791622800000
+    }
+   ]
+  },
+  {
+   "name": "replay: start while one runs on Toggl stops it first",
+   "fn": "planReplay",
+   "args": [
+    [
+     {
+      "kind": "start",
+      "atMs": 1791622800000,
+      "description": "A",
+      "projectId": null,
+      "tags": []
+     }
+    ],
+    {
+     "id": 77,
+     "workspaceId": 5,
+     "startMs": 1791612000000
+    }
+   ],
+   "expected": [
+    {
+     "step": "stop",
+     "entryId": 77,
+     "workspaceId": 5,
+     "startMs": 1791612000000,
+     "atMs": 1791622800000
+    },
+    {
+     "step": "create",
+     "startMs": 1791622800000,
+     "stopMs": null,
+     "description": "A",
+     "projectId": null,
+     "tags": []
+    }
+   ]
+  },
+  {
+   "name": "replay: switch while one runs on Toggl is 3 requests, not 4",
+   "fn": "planReplay",
+   "args": [
+    [
+     {
+      "kind": "stop",
+      "atMs": 1791622800000
+     },
+     {
+      "kind": "start",
+      "atMs": 1791622800000,
+      "description": "B",
+      "projectId": null,
+      "tags": []
+     },
+     {
+      "kind": "stop",
+      "atMs": 1791626400000
+     }
+    ],
+    {
+     "id": 77,
+     "workspaceId": 5,
+     "startMs": 1791612000000
+    }
+   ],
+   "expected": [
+    {
+     "step": "stop",
+     "entryId": 77,
+     "workspaceId": 5,
+     "startMs": 1791612000000,
+     "atMs": 1791622800000
+    },
+    {
+     "step": "create",
+     "startMs": 1791622800000,
+     "stopMs": 1791626400000,
+     "description": "B",
+     "projectId": null,
+     "tags": []
+    }
+   ]
+  },
+  {
+   "name": "replay: ops out of order are sorted by time",
+   "fn": "planReplay",
+   "args": [
+    [
+     {
+      "kind": "stop",
+      "atMs": 1791624600000
+     },
+     {
+      "kind": "start",
+      "atMs": 1791622800000,
+      "description": "A",
+      "projectId": null,
+      "tags": []
+     }
+    ],
+    null
+   ],
+   "expected": [
+    {
+     "step": "create",
+     "startMs": 1791622800000,
+     "stopMs": 1791624600000,
+     "description": "A",
+     "projectId": null,
+     "tags": []
+    }
+   ]
+  },
+  {
+   "name": "replay: a zero length entry is dropped",
+   "fn": "planReplay",
+   "args": [
+    [
+     {
+      "kind": "start",
+      "atMs": 1791622800000,
+      "description": "Work",
+      "projectId": null,
+      "tags": []
+     },
+     {
+      "kind": "stop",
+      "atMs": 1791622800000
+     }
+    ],
+    null
+   ],
+   "expected": []
+  },
+  {
+   "name": "replay: a stop with nothing running is ignored",
+   "fn": "planReplay",
+   "args": [
+    [
+     {
+      "kind": "stop",
+      "atMs": 1791622800000
+     }
+    ],
+    null
+   ],
+   "expected": []
+  },
+  {
+   "name": "replay: two timers in a row",
+   "fn": "planReplay",
+   "args": [
+    [
+     {
+      "kind": "start",
+      "atMs": 1791619200000,
+      "description": "A",
+      "projectId": null,
+      "tags": [
+       "x"
+      ]
+     },
+     {
+      "kind": "stop",
+      "atMs": 1791621000000
+     },
+     {
+      "kind": "start",
+      "atMs": 1791622800000,
+      "description": "B",
+      "projectId": null,
+      "tags": []
+     },
+     {
+      "kind": "stop",
+      "atMs": 1791623700000
+     }
+    ],
+    null
+   ],
+   "expected": [
+    {
+     "step": "create",
+     "startMs": 1791619200000,
+     "stopMs": 1791621000000,
+     "description": "A",
+     "projectId": null,
+     "tags": [
+      "x"
+     ]
+    },
+    {
+     "step": "create",
+     "startMs": 1791622800000,
+     "stopMs": 1791623700000,
+     "description": "B",
+     "projectId": null,
+     "tags": []
+    }
+   ]
+  },
+  {
+   "name": "replay: empty queue",
+   "fn": "planReplay",
+   "args": [
+    [],
+    null
+   ],
+   "expected": []
+  },
+  {
+   "name": "enqueue adds an op",
+   "fn": "enqueue",
+   "args": [
+    [
+     {
+      "kind": "start",
+      "atMs": 1791622800000,
+      "description": "Work",
+      "projectId": null,
+      "tags": []
+     }
+    ],
+    {
+     "kind": "stop",
+     "atMs": 1791623400000
+    },
+    40
+   ],
+   "expected": [
+    {
+     "kind": "start",
+     "atMs": 1791622800000,
+     "description": "Work",
+     "projectId": null,
+     "tags": []
+    },
+    {
+     "kind": "stop",
+     "atMs": 1791623400000
+    }
+   ]
+  },
+  {
+   "name": "enqueue refuses when the queue is full",
+   "fn": "enqueue",
+   "args": [
+    [
+     {
+      "kind": "start",
+      "atMs": 1791622800000,
+      "description": "Work",
+      "projectId": null,
+      "tags": []
+     },
+     {
+      "kind": "stop",
+      "atMs": 1791623400000
+     }
+    ],
+    {
+     "kind": "start",
+     "atMs": 1791624000000,
+     "description": "Work",
+     "projectId": null,
+     "tags": []
+    },
+    2
+   ],
+   "expected": null
+  },
+  {
+   "name": "iso seconds drops milliseconds",
+   "fn": "isoSeconds",
+   "args": [
+    1791619200123
+   ],
+   "expected": "2026-10-10T08:00:00Z"
+  },
+  {
+   "name": "create body of a running timer",
+   "fn": "createBody",
+   "args": [
+    {
+     "workspaceId": 5,
+     "description": "Write",
+     "projectId": null,
+     "tags": [],
+     "startMs": 1791622800000
+    }
+   ],
+   "expected": {
+    "created_with": "Mobile Timer for Toggl Track",
+    "description": "Write",
+    "start": "2026-10-10T09:00:00Z",
+    "workspace_id": 5,
+    "duration": -1
+   }
+  },
+  {
+   "name": "create body with project and tags",
+   "fn": "createBody",
+   "args": [
+    {
+     "workspaceId": 5,
+     "description": "Write",
+     "projectId": 12,
+     "tags": [
+      "a",
+      "b"
+     ],
+     "startMs": 1791622800000
+    }
+   ],
+   "expected": {
+    "created_with": "Mobile Timer for Toggl Track",
+    "description": "Write",
+    "start": "2026-10-10T09:00:00Z",
+    "workspace_id": 5,
+    "duration": -1,
+    "project_id": 12,
+    "tags": [
+     "a",
+     "b"
+    ]
+   }
+  },
+  {
+   "name": "create body of a finished entry has stop and a matching duration",
+   "fn": "createBody",
+   "args": [
+    {
+     "workspaceId": 5,
+     "description": "Write",
+     "projectId": 12,
+     "tags": [],
+     "startMs": 1791622800400,
+     "stopMs": 1791624600900
+    }
+   ],
+   "expected": {
+    "created_with": "Mobile Timer for Toggl Track",
+    "description": "Write",
+    "start": "2026-10-10T09:00:00Z",
+    "workspace_id": 5,
+    "duration": 1800,
+    "project_id": 12,
+    "stop": "2026-10-10T09:30:00Z"
+   }
+  },
+  {
+   "name": "project by name ignores case and spaces",
+   "fn": "findProject",
+   "args": [
+    [
+     {
+      "id": 11,
+      "workspace_id": 5,
+      "name": "Docs",
+      "color": "#06a893",
+      "active": true
+     },
+     {
+      "id": 12,
+      "workspace_id": 5,
+      "name": "Old plan",
+      "color": "#000000",
+      "active": false
+     },
+     {
+      "id": 13,
+      "workspace_id": 5,
+      "name": "Code",
+      "color": "#c7561e",
+      "active": true
+     }
+    ],
+    "  dOcS "
+   ],
+   "expected": {
+    "id": 11,
+    "workspace_id": 5,
+    "name": "Docs",
+    "color": "#06a893",
+    "active": true
+   }
+  },
+  {
+   "name": "project by id text",
+   "fn": "findProject",
+   "args": [
+    [
+     {
+      "id": 11,
+      "workspace_id": 5,
+      "name": "Docs",
+      "color": "#06a893",
+      "active": true
+     },
+     {
+      "id": 12,
+      "workspace_id": 5,
+      "name": "Old plan",
+      "color": "#000000",
+      "active": false
+     },
+     {
+      "id": 13,
+      "workspace_id": 5,
+      "name": "Code",
+      "color": "#c7561e",
+      "active": true
+     }
+    ],
+    "13"
+   ],
+   "expected": {
+    "id": 13,
+    "workspace_id": 5,
+    "name": "Code",
+    "color": "#c7561e",
+    "active": true
+   }
+  },
+  {
+   "name": "inactive project is not found",
+   "fn": "findProject",
+   "args": [
+    [
+     {
+      "id": 11,
+      "workspace_id": 5,
+      "name": "Docs",
+      "color": "#06a893",
+      "active": true
+     },
+     {
+      "id": 12,
+      "workspace_id": 5,
+      "name": "Old plan",
+      "color": "#000000",
+      "active": false
+     },
+     {
+      "id": 13,
+      "workspace_id": 5,
+      "name": "Code",
+      "color": "#c7561e",
+      "active": true
+     }
+    ],
+    "Old plan"
+   ],
+   "expected": null
+  },
+  {
+   "name": "empty reference is not found",
+   "fn": "findProject",
+   "args": [
+    [
+     {
+      "id": 11,
+      "workspace_id": 5,
+      "name": "Docs",
+      "color": "#06a893",
+      "active": true
+     },
+     {
+      "id": 12,
+      "workspace_id": 5,
+      "name": "Old plan",
+      "color": "#000000",
+      "active": false
+     },
+     {
+      "id": 13,
+      "workspace_id": 5,
+      "name": "Code",
+      "color": "#c7561e",
+      "active": true
+     }
+    ],
+    "   "
+   ],
+   "expected": null
+  },
+  {
+   "name": "note property toggl-project",
+   "fn": "noteProjectRef",
+   "args": [
+    {
+     "toggl-project": " Docs "
+    }
+   ],
+   "expected": "Docs"
+  },
+  {
+   "name": "note property toggl_project as number",
+   "fn": "noteProjectRef",
+   "args": [
+    {
+     "toggl_project": 42
+    }
+   ],
+   "expected": "42"
+  },
+  {
+   "name": "note property missing",
+   "fn": "noteProjectRef",
+   "args": [
+    {
+     "title": "x"
+    }
+   ],
+   "expected": null
+  },
+  {
+   "name": "note property of the wrong type",
+   "fn": "noteProjectRef",
+   "args": [
+    {
+     "toggl-project": [
+      "a"
+     ]
+    }
+   ],
+   "expected": null
+  },
+  {
+   "name": "note without properties",
+   "fn": "noteProjectRef",
+   "args": [
+    null
+   ],
+   "expected": null
+  },
+  {
+   "name": "tags are split, trimmed and unique",
+   "fn": "parseTags",
+   "args": [
+    "a, b ,,a,c"
+   ],
+   "expected": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "name": "at most 10 tags",
+   "fn": "parseTags",
+   "args": [
+    "t0,t1,t2,t3,t4,t5,t6,t7,t8,t9,t10,t11,t12,t13"
+   ],
+   "expected": [
+    "t0",
+    "t1",
+    "t2",
+    "t3",
+    "t4",
+    "t5",
+    "t6",
+    "t7",
+    "t8",
+    "t9"
+   ]
+  },
+  {
+   "name": "report block defaults",
+   "fn": "parseReportSpec",
+   "args": [
+    ""
+   ],
+   "expected": {
+    "spec": {
+     "range": "today",
+     "by": "project",
+     "title": ""
+    }
+   }
+  },
+  {
+   "name": "report block with all keys",
+   "fn": "parseReportSpec",
+   "args": [
+    "range: week\nby: day\ntitle: My week\n# note"
+   ],
+   "expected": {
+    "spec": {
+     "range": "week",
+     "by": "day",
+     "title": "My week"
+    }
+   }
+  },
+  {
+   "name": "report block with a bad by value",
+   "fn": "parseReportSpec",
+   "args": [
+    "by: color"
+   ],
+   "expected": {
+    "error": "by must be project, day or description."
+   }
+  },
+  {
+   "name": "report block with an unknown key",
+   "fn": "parseReportSpec",
+   "args": [
+    "colour: red"
+   ],
+   "expected": {
+    "error": "Unknown key \"colour\". Use range, by or title."
+   }
+  },
+  {
+   "name": "report block with a line that has no colon",
+   "fn": "parseReportSpec",
+   "args": [
+    "week"
+   ],
+   "expected": {
+    "error": "Cannot read the line \"week\". Use \"range: week\"."
+   }
+  },
+  {
+   "name": "report as a Markdown table with a total row",
+   "fn": "reportMarkdown",
+   "args": [
+    [
+     {
+      "key": "Docs",
+      "seconds": 5400,
+      "color": null
+     },
+     {
+      "key": "A|B",
+      "seconds": 1800,
+      "color": null
+     }
+    ],
+    "project"
+   ],
+   "expected": "| Project | Hours |\n| --- | ---: |\n| Docs | 1.50 |\n| A\\|B | 0.50 |\n| **Total** | **2.00** |"
+  }
+ ]
+}

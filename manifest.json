@@ -1,0 +1,11 @@
+{
+	"id": "toggl-mobile-timer",
+	"name": "Mobile Timer for Toggl Track",
+	"version": "1.0.0",
+	"minAppVersion": "1.13.4",
+	"description": "Starts, stops and switches your Toggl Track timer from a note, on phone and desktop, and shows the running timer and today's total.",
+	"author": "Michael Lip",
+	"authorUrl": "https://github.com/theluckystrike",
+	"fundingUrl": "https://github.com/sponsors/theluckystrike",
+	"isDesktopOnly": false
+}
