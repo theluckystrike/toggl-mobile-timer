@@ -9,6 +9,7 @@ describe('normalizeSettings', () => {
 	it('keeps good values and clamps the refresh time', () => {
 		expect(normalizeSettings({ refreshMinutes: 1 }).refreshMinutes).toBe(5);
 		expect(normalizeSettings({ refreshMinutes: 500 }).refreshMinutes).toBe(60);
+		expect(normalizeSettings({ useNoteTitle: false }).useNoteTitle).toBe(false);
 		expect(normalizeSettings({ defaultProjectId: '123', weekStart: 'sunday', tokenSecretId: 'my-toggl-key' })).toMatchObject({ defaultProjectId: '123', weekStart: 'sunday', tokenSecretId: 'my-toggl-key' });
 	});
 	it('never has a token field', () => {

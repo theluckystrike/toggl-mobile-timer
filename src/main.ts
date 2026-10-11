@@ -2,7 +2,7 @@ import { Notice, Platform, Plugin, TFile, type WorkspaceLeaf } from 'obsidian';
 import type { SponsorsManager } from './license/index';
 import { createGitHubSponsors } from './license/github-obsidian';
 import { TogglClient, obsidianHttp } from './client';
-import { descriptionFromNote, entrySeconds, findProject, formatClock, formatHours, formatWait, noteProjectRef } from './logic';
+import { entrySeconds, findProject, formatClock, formatHours, formatWait, noteDescription, noteProjectRef } from './logic';
 import { EditModal, StartModal } from './modals';
 import { SPONSORS, bindPro, isPro, resetPro } from './pro';
 import { renderReport } from './report';
@@ -178,7 +178,7 @@ export default class TogglMobileTimerPlugin extends Plugin {
 		const file = this.app.workspace.getActiveFile();
 		if (!file) return false;
 		if (!checking) {
-			const req: StartRequest = { description: descriptionFromNote(file.basename), projectId: this.projectForNote(file), tags: [] };
+			const req: StartRequest = { description: noteDescription(file.basename, this.settings.useNoteTitle), projectId: this.projectForNote(file), tags: [] };
 			void this.service.start(req);
 		}
 		return true;
@@ -195,7 +195,7 @@ export default class TogglMobileTimerPlugin extends Plugin {
 		const def = svc.state.projects.find((p) => p.id === this.defaultProjectId());
 		new StartModal(this.app, {
 			title,
-			description: file ? descriptionFromNote(file.basename) : '',
+			description: noteDescription(file?.basename, this.settings.useNoteTitle),
 			projects: svc.state.projects,
 			projectId,
 			defaultProjectName: def?.name ?? '',

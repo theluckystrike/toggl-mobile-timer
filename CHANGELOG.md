@@ -1,0 +1,7 @@
+# toggl-mobile-timer
+
+## 1.0.1
+
+### Patch Changes
+
+- 8a4e3dc: Say exactly what goes to Toggl. When you start a timer from a note, the title of the note becomes the description of the time entry and is sent to Toggl, both from "Start timer for this note" and from the Start window that offers it. The README and the settings now say so, with the list of requests and when they run. New setting "Use the note title as the description" (on by default): turn it off to send no note title.

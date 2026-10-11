@@ -10,6 +10,8 @@ export interface TogglMobileTimerSettings {
 	/** Free: one default project for every timer, as a project id text. Empty means no project. */
 	defaultProjectId: string;
 	showStatusBar: boolean;
+	/** True: the title of the open note is the description of a timer that starts from that note, and Toggl gets it. */
+	useNoteTitle: boolean;
 	/** Minutes before the timer panel asks Toggl again. */
 	refreshMinutes: number;
 	weekStart: 'monday' | 'sunday';
@@ -23,6 +25,7 @@ export const DEFAULT_SETTINGS: TogglMobileTimerSettings = {
 	tokenSecretId: DEFAULT_SECRET_ID,
 	defaultProjectId: '',
 	showStatusBar: true,
+	useNoteTitle: true,
 	refreshMinutes: 10,
 	weekStart: 'monday',
 };
@@ -36,6 +39,7 @@ export function normalizeSettings(saved: Partial<TogglMobileTimerSettings> | nul
 		tokenSecretId: id,
 		defaultProjectId: typeof s.defaultProjectId === 'string' && /^\d{0,15}$/.test(s.defaultProjectId) ? s.defaultProjectId : '',
 		showStatusBar: typeof s.showStatusBar === 'boolean' ? s.showStatusBar : DEFAULT_SETTINGS.showStatusBar,
+		useNoteTitle: typeof s.useNoteTitle === 'boolean' ? s.useNoteTitle : DEFAULT_SETTINGS.useNoteTitle,
 		refreshMinutes: Math.min(REFRESH_MAX, Math.max(REFRESH_MIN, minutes)),
 		weekStart: s.weekStart === 'sunday' ? 'sunday' : 'monday',
 	};
@@ -103,6 +107,11 @@ export class TogglMobileTimerSettingTab extends PluginSettingTab {
 				desc: 'The status bar does not exist on phones and tablets. There the timer panel and the ribbon button show the timer.',
 				visible: () => Platform.isDesktop,
 				control: { type: 'toggle', key: 'showStatusBar', defaultValue: true },
+			},
+			{
+				name: 'Use the note title as the description',
+				desc: 'On: when you start a timer from a note, the title of the open note is the description of the time entry, and it is sent to Toggl. The Start window offers it, and "Start timer for this note" sends it at once. Off: no note title is sent, unless you type it.',
+				control: { type: 'toggle', key: 'useNoteTitle', defaultValue: true },
 			},
 			{
 				name: 'Ask Toggl again after',

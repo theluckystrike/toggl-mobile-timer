@@ -427,6 +427,14 @@ export function descriptionFromNote(basename: string): string {
 	return basename.trim().slice(0, 120);
 }
 
+/**
+ * The description that a note offers to Toggl. With the setting "Use the note title as the description" off, or with no
+ * open note, it is empty, so no note title goes into a request unless the user types it.
+ */
+export function noteDescription(basename: string | null | undefined, useTitle: boolean): string {
+	return useTitle && typeof basename === 'string' ? descriptionFromNote(basename) : '';
+}
+
 // ---------------------------------------------------------------- report block
 
 export interface ReportSpec {
