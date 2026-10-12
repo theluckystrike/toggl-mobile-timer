@@ -18,7 +18,7 @@ The free version gives every timer one default project, set in the settings.
 
 ### The timer panel and the ribbon button
 
-A phone has no status bar, so the plugin has a timer panel. Run "Open timer panel". It shows the clock, today's total, the Start, Stop and Switch buttons, and today's finished entries. The ribbon button turns red while a timer runs. The clock counts from the start time that Toggl holds, so it is right when a sleeping phone wakes up, with no request.
+Obsidian has no mobile status bar. Run "Open timer panel". It shows the clock, today's total, the Start, Stop and Switch buttons, and today's finished entries. The ribbon button turns red while a timer runs. The clock counts from the start time that Toggl holds, so it is right when a sleeping phone wakes up, with no request.
 
 <img src="https://raw.githubusercontent.com/theluckystrike/toggl-mobile-timer/HEAD/docs/timer-panel.png" alt="The timer panel with a running timer of 27 minutes, today's total and three finished entries" width="720">
 
@@ -69,9 +69,9 @@ With no connection, or after a 402, a start or stop waits in a queue of up to 40
 
 ## Install
 
-When Mobile Timer for Toggl Track is listed in the community directory, open Settings, then Community plugins, then Browse, and search for "Mobile Timer for Toggl Track". Select Install, then Enable.
+After the community listing goes live, open Settings, Community plugins, Browse. Search for "Mobile Timer for Toggl Track". Select Install, then Enable.
 
-To install by hand, put `main.js`, `manifest.json` and `styles.css` from the latest release in `<vault>/.obsidian/plugins/toggl-mobile-timer/`, then turn on the plugin.
+Copy `main.js`, `manifest.json` and `styles.css` from the latest release into `<vault>/.obsidian/plugins/toggl-mobile-timer/`. Enable the plugin.
 
 ## Usage
 
@@ -99,7 +99,7 @@ All entries that start yesterday or today, cut at midnight of your local time. A
 
 ### Does the token sync to my other devices?
 
-No. Obsidian keeps secrets on the device. Paste the token on each device.
+Obsidian's secret storage API holds the token. Plugin settings hold no token. Select or enter a token on each device.
 
 ## Limits
 
@@ -107,21 +107,21 @@ The plugin does not run in the background and does not edit projects or clients.
 
 ## Payment, account and network
 
-The core features are free and stay free. Pro features need a GitHub Sponsors sponsorship of theluckystrike: $5 a month or more, or $15 once. When you have paid $15 in total, Pro stays on. Your notes stay readable and editable with or without Pro.
+The core features are free. Pro features need a GitHub Sponsors sponsorship of theluckystrike: $5 a month or more, or $15 once. A total payment of $15 meets the payment requirement for Pro without further payment. Sign-in and the checks below still apply. Your notes stay readable and editable with or without Pro.
 
 GitHub handles the payment. Sponsor at https://github.com/sponsors/theluckystrike. You need a Toggl Track account for every feature, free or Pro. Pro also needs the GitHub account that sponsors.
 
 Mobile Timer for Toggl Track talks to Toggl Track through its public API at `https://api.track.toggl.com/api/v9`, only after you save a Toggl API token in the settings. Each request carries the token as HTTP Basic authentication in the Authorization header. When you start, stop, edit or delete a timer, it sends the time entry: the description, the project number, the tags, the start and stop time, the workspace number and the plugin name. When you start a timer from a note, the title of the note becomes the description and is sent to Toggl. That happens when you run "Start timer for this note", and when you select Start in the Start window, which opens with the title in its box. The title is the file name without the folder and the extension, cut at 120 characters. Turn off "Use the note title as the description" in the settings to send no title. It sends no note content, no folder path and no other vault data, and it has no telemetry. It reads your name, workspace, projects, tags, running timer and time entries from Toggl when Obsidian opens, when you return to the app or go online, when you open the panel or, with Pro, the Start window, when you select Refresh, Check connection or Load projects, and when a report block draws. Mobile Timer for Toggl Track is not affiliated with, made by or approved by Toggl. Toggl and Toggl Track are marks of their owner.
 
-Until you select "Sign in with GitHub" in the settings, Mobile Timer for Toggl Track sends nothing to GitHub. Sign in uses the GitHub device flow. Mobile Timer for Toggl Track sends its public client ID and the scope `read:user` to `https://github.com/login/device/code` and shows you a code. While you enter the code at https://github.com/login/device, it asks `https://github.com/login/oauth/access_token` every few seconds whether sign in is done. The scope `read:user` is read-only access to your profile, which GitHub needs to show the sponsorship tier. It gives no access to repositories and no write access.
+Until you select "Sign in with GitHub" in the settings, Mobile Timer for Toggl Track sends nothing to GitHub. Sign in uses the GitHub device flow. Mobile Timer for Toggl Track sends its public client ID and the scope `read:user` to `https://github.com/login/device/code` and shows you a code. While you enter the code at https://github.com/login/device, it asks `https://github.com/login/oauth/access_token` every few seconds to check the sign-in status. The scope permits profile reads only. GitHub needs this access to show the sponsorship tier. It grants no repository scope and no write access.
 
-After sign in, Mobile Timer for Toggl Track sends one query to `https://api.github.com/graphql`: does the signed-in account sponsor theluckystrike, at which tier, and how much it has paid theluckystrike in total. It asks again at most once every 7 days, or when you select Refresh. It sends no note content, file names or other vault data to GitHub, and it has no telemetry.
+After sign in, Mobile Timer for Toggl Track sends one query to `https://api.github.com/graphql`. It checks if the signed-in account sponsors theluckystrike. It asks for the tier and the total payment to theluckystrike. The plugin reuses a successful check for 7 days. Failed checks can retry after 6 hours. Select Refresh to request an earlier check. It sends no note content, file names or other vault data to GitHub, and it has no telemetry.
 
-Pro keeps working for 14 days without a successful check. The GitHub token stays in the secret storage of Obsidian on this device. It is not written to data.json or other vault files, so it does not sync or reach a git repository. The local storage of this device keeps your GitHub login, the tier and the time of the last check. Sign out deletes the token. You can also revoke the access in your GitHub settings, under Applications.
+After a successful check, Pro can work offline for up to 14 days. Sign out or a negative sponsorship answer turns Pro off. The plugin stores the GitHub token through the secret storage API of Obsidian. It does not put the token in its saved settings or its local sponsorship data. The local storage of this device keeps your GitHub login, the tier and the time of the last check. Sign out clears the token. You can also revoke the access in your GitHub settings, under Applications.
 
 ## Support
 
-Report a bug or ask for a feature in the issue tracker of this repository. To support the work, use [GitHub Sponsors](https://github.com/sponsors/theluckystrike).
+Report bugs and feature requests in this repository's issue tracker. To support the work, use [GitHub Sponsors](https://github.com/sponsors/theluckystrike).
 
 ```
 npm ci
