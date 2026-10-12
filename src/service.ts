@@ -184,6 +184,13 @@ export class TimerService {
 		return this.state.entries.find((e) => isRunning(e)) ?? null;
 	}
 
+	/** Entries for the note log. A queued stop of a server timer is not yet a finished Toggl entry. */
+	noteLogEntries(): TimeEntry[] {
+		const pendingIds = new Set(this.state.plan.filter((step) => step.step === 'stop').map((step) => step.entryId));
+		if (this.state.queueBase) pendingIds.add(this.state.queueBase.id);
+		return this.state.entries.filter((e) => e.id > 0 && !pendingIds.has(e.id));
+	}
+
 	todaySeconds(): number {
 		const now = this.deps.now();
 		const day = dayBounds(now, this.deps.tzOffsetMin());

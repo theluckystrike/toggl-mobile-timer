@@ -2357,6 +2357,178 @@
     "project"
    ],
    "expected": "| Project | Hours |\n| --- | ---: |\n| Docs | 1.50 |\n| A\\|B | 0.50 |\n| **Total** | **2.00** |"
+  },
+  {
+   "name": "note log adds a heading to an empty note",
+   "fn": "noteLogEdit",
+   "args": [
+    "",
+    [
+     {
+      "id": 1,
+      "workspace_id": 5,
+      "description": "Write README",
+      "project_name": "Docs",
+      "start": "2026-10-12T08:30:00Z",
+      "stop": "2026-10-12T09:15:00Z",
+      "duration": 2700
+     }
+    ],
+    1791813600000,
+    0,
+    "Time tracking"
+   ],
+   "expected": {
+    "offset": 0,
+    "text": "## Time tracking\n\n- 2026-10-12 08:30 to 2026-10-12 09:15 | Write README | Docs | 0:45:00 <!-- toggl-entry:5:1:2026-10-12 -->\n\n",
+    "count": 1
+   }
+  },
+  {
+   "name": "note log adds under a heading before the next section",
+   "fn": "noteLogEdit",
+   "args": [
+    "## Work\n\n## Plans\n",
+    [
+     {
+      "id": 1,
+      "workspace_id": 5,
+      "description": "Write README",
+      "project_name": "Docs",
+      "start": "2026-10-12T08:30:00Z",
+      "stop": "2026-10-12T09:15:00Z",
+      "duration": 2700
+     }
+    ],
+    1791813600000,
+    0,
+    "Work"
+   ],
+   "expected": {
+    "offset": 9,
+    "text": "- 2026-10-12 08:30 to 2026-10-12 09:15 | Write README | Docs | 0:45:00 <!-- toggl-entry:5:1:2026-10-12 -->\n\n",
+    "count": 1
+   }
+  },
+  {
+   "name": "note log skips a second copy",
+   "fn": "noteLogEdit",
+   "args": [
+    "- 2026-10-12 08:30 to 2026-10-12 09:15 | Write README | Docs | 0:45:00 <!-- toggl-entry:5:1:2026-10-12 -->\n\n",
+    [
+     {
+      "id": 1,
+      "workspace_id": 5,
+      "description": "Write README",
+      "project_name": "Docs",
+      "start": "2026-10-12T08:30:00Z",
+      "stop": "2026-10-12T09:15:00Z",
+      "duration": 2700
+     }
+    ],
+    1791813600000,
+    0,
+    "Time tracking"
+   ],
+   "expected": {
+    "offset": 108,
+    "text": "",
+    "count": 0
+   }
+  },
+  {
+   "name": "note log skips a running timer",
+   "fn": "noteLogEdit",
+   "args": [
+    "",
+    [
+     {
+      "id": 1,
+      "workspace_id": 5,
+      "description": "Write README",
+      "project_name": "Docs",
+      "start": "2026-10-12T08:30:00Z",
+      "stop": null,
+      "duration": -1
+     }
+    ],
+    1791813600000,
+    0,
+    "Time tracking"
+   ],
+   "expected": {
+    "offset": 0,
+    "text": "",
+    "count": 0
+   }
+  },
+  {
+   "name": "note log skips unsent entries",
+   "fn": "noteLogEdit",
+   "args": [
+    "",
+    [
+     {
+      "id": -1,
+      "workspace_id": 5,
+      "description": "Write README",
+      "project_name": "Docs",
+      "start": "2026-10-12T08:30:00Z",
+      "stop": "2026-10-12T09:15:00Z",
+      "duration": 2700
+     }
+    ],
+    1791813600000,
+    0,
+    "Time tracking"
+   ],
+   "expected": {
+    "offset": 0,
+    "text": "",
+    "count": 0
+   }
+  },
+  {
+   "name": "note log clips at local midnight",
+   "fn": "noteLogEdit",
+   "args": [
+    "",
+    [
+     {
+      "id": 1,
+      "workspace_id": 5,
+      "description": "Write README",
+      "project_name": "Docs",
+      "start": "2026-10-11T16:30:00Z",
+      "stop": "2026-10-11T18:00:00Z",
+      "duration": 5400
+     }
+    ],
+    1791813600000,
+    420,
+    "Time tracking"
+   ],
+   "expected": {
+    "offset": 0,
+    "text": "## Time tracking\n\n- 2026-10-12 00:00 to 2026-10-12 01:00 | Write README | Docs | 1:00:00 <!-- toggl-entry:5:1:2026-10-12 -->\n\n",
+    "count": 1
+   }
+  },
+  {
+   "name": "note log heading removes hashes and line breaks",
+   "fn": "logHeading",
+   "args": [
+    " ## Work\nlog "
+   ],
+   "expected": "Work log"
+  },
+  {
+   "name": "note log heading uses the default for empty text",
+   "fn": "logHeading",
+   "args": [
+    ""
+   ],
+   "expected": "Time tracking"
   }
  ]
 }

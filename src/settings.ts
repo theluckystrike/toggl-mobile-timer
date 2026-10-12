@@ -1,7 +1,7 @@
 import { Notice, Platform, PluginSettingTab, type SettingDefinitionItem } from 'obsidian';
 import { sponsorsSettingItems } from './license/github-obsidian';
 import { PRO_UI, isPro } from './pro';
-import { formatWait } from './logic';
+import { formatWait, logHeading } from './logic';
 import type TogglMobileTimerPlugin from './main';
 
 export interface TogglMobileTimerSettings {
@@ -15,6 +15,7 @@ export interface TogglMobileTimerSettings {
 	/** Minutes before the timer panel asks Toggl again. */
 	refreshMinutes: number;
 	weekStart: 'monday' | 'sunday';
+	noteLogHeading: string;
 }
 
 export const REFRESH_MIN = 5;
@@ -28,6 +29,7 @@ export const DEFAULT_SETTINGS: TogglMobileTimerSettings = {
 	useNoteTitle: true,
 	refreshMinutes: 10,
 	weekStart: 'monday',
+	noteLogHeading: 'Time tracking',
 };
 
 /** Fills gaps and drops bad values from saved data, so old or hand-edited data.json never breaks the plugin. */
@@ -42,6 +44,7 @@ export function normalizeSettings(saved: Partial<TogglMobileTimerSettings> | nul
 		useNoteTitle: typeof s.useNoteTitle === 'boolean' ? s.useNoteTitle : DEFAULT_SETTINGS.useNoteTitle,
 		refreshMinutes: Math.min(REFRESH_MAX, Math.max(REFRESH_MIN, minutes)),
 		weekStart: s.weekStart === 'sunday' ? 'sunday' : 'monday',
+		noteLogHeading: logHeading(s.noteLogHeading),
 	};
 }
 
@@ -123,12 +126,17 @@ export class TogglMobileTimerSettingTab extends PluginSettingTab {
 				desc: 'Used by the week range in the report code block.',
 				control: { type: 'dropdown', key: 'weekStart', defaultValue: 'monday', options: { monday: 'Monday', sunday: 'Sunday' } },
 			},
+			{
+				name: 'Note log heading',
+				desc: 'Log today to this note adds finished entries under this heading. Open your daily note in edit mode and run the command. A missing heading is added at the end.',
+				control: { type: 'text', key: 'noteLogHeading', defaultValue: DEFAULT_SETTINGS.noteLogHeading },
+			},
 			{ name: 'Request budget', desc: this.budgetText() },
 			{
 				name: 'Pro features',
 				desc: isPro()
 					? 'Pro is on: report code block, edit and delete past entries, project and tag pickers, a project for each note, and the offline queue.'
-					: 'Free version: start, stop and switch the timer, the running timer and the day total, and one default project. Pro adds the report code block, edit and delete of past entries, project and tag pickers, a project for each note, and the offline queue.',
+					: 'Free version: start, stop and switch the timer, the running timer and the day total, one default project, and a note log. Pro adds the report code block, edit and delete of past entries, project and tag pickers, a project for each note, and the offline queue.',
 			},
 		];
 	}

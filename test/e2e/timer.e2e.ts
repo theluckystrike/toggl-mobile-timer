@@ -110,6 +110,31 @@ describe(`${pluginId} free tier with a stubbed Toggl`, function () {
 		expect(raw).toContain('tokenSecretId');
 	});
 
+	it('logs finished entries to the daily note for free, sends no request and skips a second copy', async function () {
+		await browser.executeObsidian(async ({ app }) => {
+			const path = 'Notes/Time log.md';
+			const file = app.vault.getFileByPath(path) ?? await app.vault.create(path, '# Daily log\n\n## Time tracking\n\n## Plans\n\nKeep this.\n');
+			await app.workspace.getLeaf(false).openFile(file, { state: { mode: 'source' } });
+		});
+		const before = (await calls()).length;
+		await browser.executeObsidianCommand(`${pluginId}:log-today`);
+		const first = await browser.executeObsidian(({ app }) => app.workspace.activeEditor?.editor?.getValue() ?? '');
+		expect(first).toContain('Write README');
+		expect(first).toContain('Fix sync bug');
+		expect(first).toContain('Review notes');
+		expect(first.match(/<!-- toggl-entry:/g)).toHaveLength(3);
+		expect(first.indexOf('Write README')).toBeLessThan(first.indexOf('## Plans'));
+		expect(first).toContain('Keep this.');
+		await browser.executeObsidianCommand(`${pluginId}:log-today`);
+		expect(await browser.executeObsidian(({ app }) => app.workspace.activeEditor?.editor?.getValue() ?? '')).toBe(first);
+		expect((await calls()).length).toBe(before);
+	});
+
+	it('the note log insertion can be undone in one step', async function () {
+		await browser.executeObsidian(({ app }) => app.workspace.activeEditor?.editor?.undo());
+		expect(await browser.executeObsidian(({ app }) => app.workspace.activeEditor?.editor?.getValue() ?? '')).toBe('# Daily log\n\n## Time tracking\n\n## Plans\n\nKeep this.\n');
+	});
+
 	it('Start timer opens a modal; typing a description and selecting Start sends one POST', async function () {
 		await browser.executeObsidianCommand(`${pluginId}:start`);
 		await browser.$('.tmt-modal input').waitForExist({ timeout: 5000 });

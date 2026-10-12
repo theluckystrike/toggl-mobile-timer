@@ -242,6 +242,26 @@ describe('TimerService', () => {
 		expect(JSON.parse(put?.body ?? '{}')).toEqual({ start: '2026-10-10T07:00:00Z', stop: '2026-10-10T08:00:00Z', duration: 3600 });
 	});
 
+	it('the note log skips a queued stop of a server timer before and during replay', async () => {
+		const fake = new FakeToggl();
+		fake.entries = [
+			{ id: 7, workspace_id: 5, description: 'Running', start: '2026-10-10T07:00:00Z', stop: null, duration: -1 },
+			{ id: 9, workspace_id: 5, description: 'Finished', start: '2026-10-10T05:00:00Z', stop: '2026-10-10T06:00:00Z', duration: 3600 },
+		];
+		const clock = { now: T0 };
+		const { svc } = make(true, fake, clock);
+		await svc.refresh();
+		fake.mode = 'offline';
+		expect(await svc.stop()).toBe(true);
+		expect(svc.state.entries.find((e) => e.id === 7)?.stop).not.toBeNull();
+		expect(svc.noteLogEntries().map((e) => e.id)).toEqual([9]);
+		clock.now += 60_000;
+		await svc.flushQueue();
+		expect(svc.state.queueBase).toBeNull();
+		expect(svc.state.plan[0]).toMatchObject({ step: 'stop', entryId: 7 });
+		expect(svc.noteLogEntries().map((e) => e.id)).toEqual([9]);
+	});
+
 	it('with Pro a 402 queues the change instead of losing it', async () => {
 		const fake = new FakeToggl();
 		const { svc } = make(true, fake, { now: T0 });

@@ -1,8 +1,8 @@
-import { Notice, Platform, Plugin, TFile, type WorkspaceLeaf } from 'obsidian';
+import { Notice, Platform, Plugin, TFile, type Editor, type WorkspaceLeaf } from 'obsidian';
 import type { SponsorsManager } from './license/index';
 import { createGitHubSponsors } from './license/github-obsidian';
 import { TogglClient, obsidianHttp } from './client';
-import { entrySeconds, findProject, formatClock, formatHours, formatWait, noteDescription, noteProjectRef } from './logic';
+import { entrySeconds, findProject, formatClock, formatHours, formatWait, noteLogEdit, noteDescription, noteProjectRef } from './logic';
 import { EditModal, StartModal } from './modals';
 import { SPONSORS, bindPro, isPro, resetPro } from './pro';
 import { renderReport } from './report';
@@ -120,6 +120,7 @@ export default class TogglMobileTimerPlugin extends Plugin {
 		this.addCommand({ id: 'toggle', name: 'Start or stop timer', callback: () => this.toggle() });
 		this.addCommand({ id: 'refresh', name: 'Refresh timer', callback: () => void this.service.refresh({ force: true }) });
 		this.addCommand({ id: 'open-panel', name: 'Open timer panel', callback: () => void this.openPanel() });
+		this.addCommand({ id: 'log-today', name: 'Log today to this note', editorCallback: (editor) => this.logToday(editor) });
 		this.addCommand({ id: 'send-queue', name: 'Send queued changes', callback: () => this.sendQueue() });
 	}
 
@@ -153,6 +154,22 @@ export default class TogglMobileTimerPlugin extends Plugin {
 	}
 
 	// ------------------------------------------------------------ actions
+
+	/** Writes from the cache through the editor. This command sends no request. */
+	logToday(editor: Editor): void {
+		const svc = this.service;
+		const edit = noteLogEdit(editor.getValue(), svc.noteLogEntries(), svc.deps.now(), svc.deps.tzOffsetMin(), this.settings.noteLogHeading);
+		if (edit.blocked) {
+			new Notice('This note has an unclosed code block or frontmatter. Close it, then log again.');
+			return;
+		}
+		if (edit.count === 0) {
+			new Notice('No new finished entries today in the cache. Refresh the timer if entries are missing.');
+			return;
+		}
+		editor.replaceRange(edit.text, editor.offsetToPos(edit.offset));
+		new Notice(`Added ${edit.count} finished ${edit.count === 1 ? 'entry' : 'entries'} to this note.`);
+	}
 
 	toggle(): void {
 		if (this.service.current()) void this.service.stop();

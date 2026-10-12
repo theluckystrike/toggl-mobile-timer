@@ -476,6 +476,85 @@ export function reportMarkdown(rows: readonly GroupRow[], by: GroupBy): string {
 	return lines.join('\n');
 }
 
+// ---------------------------------------------------------------- note log (free)
+
+/** The heading is plain text. An empty or bad saved value uses the default. */
+export function logHeading(value: unknown): string {
+	return typeof value === 'string' ? value.replace(/^\s*#{1,6}\s*/, '').replace(/[\r\n]+/g, ' ').trim().slice(0, 80) || 'Time tracking' : 'Time tracking';
+}
+
+const logText = (value: string): string => value.replace(/\s+/g, ' ').trim().replace(/[\\`*_{}[\]()<>!#|]/g, '\\$&');
+const localStamp = (ms: number, tzOffsetMin: number): string => new Date(ms + tzOffsetMin * 60_000).toISOString().slice(0, 16).replace('T', ' ');
+
+export interface NoteLogEdit {
+	offset: number;
+	text: string;
+	count: number;
+	/** Set when an unclosed code block or frontmatter stops the insertion. */
+	blocked?: true;
+}
+
+/** Adds today's finished entries from the cache. The marker stops a second copy in the same note and day. */
+export function noteLogEdit(content: string, entries: readonly TimeEntry[], nowMs: number, tzOffsetMin: number, heading: string): NoteLogEdit {
+	const day = dayBounds(nowMs, tzOffsetMin);
+	const date = localStamp(day.fromMs, tzOffsetMin).slice(0, 10);
+	const seen = new Set<string>();
+	const rows: string[] = [];
+	for (const e of [...entries].sort((a, b) => Date.parse(a.start) - Date.parse(b.start))) {
+		if (!Number.isInteger(e.id) || e.id <= 0 || !Number.isInteger(e.workspace_id) || e.workspace_id <= 0 || !e.stop || isRunning(e)) continue;
+		const start = Date.parse(e.start);
+		const stop = Date.parse(e.stop);
+		if (!Number.isFinite(start) || !Number.isFinite(stop) || stop <= start || stop > nowMs) continue;
+		const from = Math.max(start, day.fromMs);
+		const to = Math.min(stop, day.toMs);
+		const seconds = Math.floor((to - from) / 1000);
+		if (seconds <= 0) continue;
+		const marker = `<!-- toggl-entry:${e.workspace_id}:${e.id}:${date} -->`;
+		if (content.includes(marker) || seen.has(marker)) continue;
+		seen.add(marker);
+		const description = logText(e.description || '(no description)');
+		const project = logText(e.project_name || '(no project)');
+		rows.push(`- ${localStamp(from, tzOffsetMin)} to ${localStamp(to, tzOffsetMin)} | ${description} | ${project} | ${formatClock(seconds)} ${marker}`);
+	}
+	if (!rows.length) return { offset: content.length, text: '', count: 0 };
+	const title = logHeading(heading);
+	const lines = content.split('\n');
+	let offset = 0;
+	let level = 0;
+	let found = false;
+	let fence: string | null = null;
+	let frontmatter = false;
+	for (const [index, raw] of lines.entries()) {
+		const line = raw.replace(/\r$/, '');
+		if (index === 0 && line === '---') frontmatter = true;
+		else if (frontmatter && /^(---|\.\.\.)\s*$/.test(line)) frontmatter = false;
+		else if (!frontmatter) {
+			const code = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
+			if (code && !fence) fence = code[1] ?? null;
+			else if (code && fence && code[1]?.[0] === fence[0] && (code[1]?.length ?? 0) >= fence.length && !code[2]?.trim()) fence = null;
+			else if (!fence) {
+				const h = /^ {0,3}(#{1,6})\s+(.+?)\s*$/.exec(line);
+				if (h) {
+					const depth = h[1]?.length ?? 0;
+					if (found && depth <= level) break;
+					const text = (h[2]?.replace(/\s+#+\s*$/, '') ?? '').toLowerCase();
+					if (!found && [title, logText(title)].some((t) => t.toLowerCase() === text)) {
+						found = true;
+						level = depth;
+					}
+				}
+			}
+		}
+		offset += raw.length + (index < lines.length - 1 ? 1 : 0);
+	}
+	if (fence || frontmatter) return { offset: content.length, text: '', count: 0, blocked: true };
+	const eol = content.includes('\r\n') ? '\r\n' : '\n';
+	const before = content.slice(0, offset);
+	const gap = before.length === 0 || before.endsWith(eol + eol) ? '' : before.endsWith(eol) ? eol : eol + eol;
+	const head = found ? '' : `## ${logText(title)}${eol}${eol}`;
+	return { offset, text: gap + head + rows.join(eol) + eol + eol, count: rows.length };
+}
+
 // ---------------------------------------------------------------- golden vectors
 
 /** One entry point for packages/spec/vectors/toggl-mobile-timer.json: fn names a function above, args are its arguments. */
@@ -505,6 +584,8 @@ export function evalVector(fn: string, args: unknown[]): unknown {
 		parseTags,
 		parseReportSpec,
 		reportMarkdown,
+		logHeading,
+		noteLogEdit,
 		basicAuthHeader,
 		enqueue,
 	};

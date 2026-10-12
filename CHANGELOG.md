@@ -1,5 +1,11 @@
 # toggl-mobile-timer
 
+## 1.1.0
+
+### Minor Changes
+
+- 1f92ab7: Add a free command to log today's finished timer entries under a heading in the open note.
+
 ## 1.0.2
 
 ### Patch Changes
