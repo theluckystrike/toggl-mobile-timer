@@ -265,11 +265,13 @@ export class TimerService {
 		const now = this.deps.now();
 		const tz = this.deps.tzOffsetMin();
 		if (!this.deps.hasToken()) return false;
+		let force = opts.force === true;
 		if (this.deps.isPro() && (this.state.queue.length > 0 || this.state.plan.length > 0)) {
-			await this.flushQueue();
+			// sendQueue, not flushQueue: flushQueue refreshes after it sends, and that refresh would wait for this one forever.
+			if ((await this.sendQueue()) > 0) force = true;
 			if (this.state.queue.length > 0 || this.state.plan.length > 0) return false;
 		}
-		if (!opts.force && !isStale(this.state.entriesAt, now, this.deps.ttlMs(), tz)) return true;
+		if (!force && !isStale(this.state.entriesAt, now, this.deps.ttlMs(), tz)) return true;
 		const day = dayBounds(now, tz);
 		const r = await this.deps.client.entries(day.fromMs - DAY_MS, day.toMs, opts.background === true);
 		if (!r.ok) {
@@ -421,6 +423,13 @@ export class TimerService {
 
 	/** Sends queued changes in the fewest requests. Stops at the first retryable failure and keeps the rest. */
 	async flushQueue(): Promise<number> {
+		const sent = await this.sendQueue();
+		if (sent > 0 && this.state.plan.length === 0) await this.refresh({ force: true, background: true });
+		return sent;
+	}
+
+	/** Sends the queue and tells the user. It does not refresh, so refreshOnce can call it. */
+	private async sendQueue(): Promise<number> {
 		if (this.flushing || !this.deps.isPro()) return 0;
 		this.flushing = true;
 		let sent = 0;
@@ -440,10 +449,7 @@ export class TimerService {
 		} finally {
 			this.flushing = false;
 		}
-		if (sent > 0 && this.state.plan.length === 0) {
-			this.deps.notify(`Sent ${sent} queued ${sent === 1 ? 'change' : 'changes'} to Toggl.`);
-			await this.refresh({ force: true, background: true });
-		}
+		if (sent > 0 && this.state.plan.length === 0) this.deps.notify(`Sent ${sent} queued ${sent === 1 ? 'change' : 'changes'} to Toggl.`);
 		return sent;
 	}
 

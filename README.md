@@ -89,13 +89,13 @@ The token stays in the secret storage of Obsidian, not in a note or in `data.jso
 
 ## Settings
 
-Check connection uses 1 request. Load projects, then set a Default project. Use the note title as the description controls the note name. Ask Toggl again after sets cache age from 5 to 60 minutes. Week starts on sets the report week. Note log heading sets the log section. Request budget shows the remaining requests.
+Check connection uses 1 request. Load projects, then set a Default project. Use the note title as the description controls the note name. Ask Toggl again after sets cache age from 5 to 60 minutes. Week starts on sets the report week. Note log heading sets the log section.
 
 ## FAQ
 
 ### Does it work on a phone?
 
-Yes. The code uses no Node module. The screenshots show desktop; phones use the same panel.
+Yes. It uses no Node module. On a phone the panel opens in a tab and no status bar item is added. Unit tests check both. The screenshots show desktop.
 
 ### Does the timer run when the app is closed?
 
@@ -103,7 +103,7 @@ The timer runs on Toggl, so yes. The plugin sends no reminders, because Obsidian
 
 ### Which entries does the day total count?
 
-All entries that start yesterday or today, cut at midnight of your local time. A timer that started before yesterday shows after "Refresh timer". The plugin uses your default Toggl workspace.
+Entries that start yesterday or today, up to 300, cut at midnight of your local time. A timer that started before yesterday shows after "Refresh timer". The plugin uses your default Toggl workspace.
 
 ### Do note logs change after I edit an entry in Toggl?
 
@@ -115,7 +115,7 @@ Obsidian's secret storage API holds the token. Plugin settings hold no token. Se
 
 ## Limits
 
-The plugin does not run in the background and does not edit projects or clients. It uses no code from obsidian-toggl-integration, which is desktop only.
+The plugin does not run in the background and does not edit projects or clients.
 
 ## Payment, account and network
 

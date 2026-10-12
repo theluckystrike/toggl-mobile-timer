@@ -1,5 +1,11 @@
 # toggl-mobile-timer
 
+## 1.1.1
+
+### Patch Changes
+
+- b1ee7a0: A refresh that sends the offline queue no longer hangs the timer, and Enter that confirms an input method word no longer starts the timer.
+
 ## 1.1.0
 
 ### Minor Changes

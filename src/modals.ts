@@ -34,7 +34,8 @@ export class StartModal extends Modal {
 		new Setting(this.contentEl).setName('Description').addText((t) => {
 			t.setValue(this.description).setPlaceholder('What are you working on?').onChange((v) => (this.description = v));
 			t.inputEl.addEventListener('keydown', (e) => {
-				if (e.key === 'Enter') this.submit();
+				// An input method (Chinese, Japanese, Korean) uses Enter to confirm a word. That Enter must not start the timer.
+				if (e.key === 'Enter' && !e.isComposing) this.submit();
 			});
 			window.setTimeout(() => t.inputEl.focus(), 50);
 		});

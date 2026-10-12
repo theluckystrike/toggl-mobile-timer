@@ -262,6 +262,24 @@ describe('TimerService', () => {
 		expect(svc.noteLogEntries().map((e) => e.id)).toEqual([9]);
 	});
 
+	it('with Pro a refresh that sends the queue finishes and a later refresh still asks Toggl', async () => {
+		const fake = new FakeToggl();
+		const clock = { now: T0 };
+		const { svc } = make(true, fake, clock);
+		await svc.refresh();
+		fake.mode = 'offline';
+		expect(await svc.start({ description: 'Offline work', projectId: null, tags: [] })).toBe(true);
+		fake.mode = 'ok';
+		clock.now += 60_000;
+		const late = new Promise<string>((resolve) => setTimeout(() => resolve('hung'), 500));
+		expect(await Promise.race([svc.refresh({ force: true, background: true }).then(() => 'done'), late])).toBe('done');
+		expect(svc.pending()).toBe(0);
+		fake.calls = [];
+		clock.now += 60_000;
+		expect(await Promise.race([svc.refresh({ force: true }).then(() => 'done'), late])).toBe('done');
+		expect(fake.calls.some((c) => c.method === 'GET' && c.path.startsWith('/me/time_entries?'))).toBe(true);
+	});
+
 	it('with Pro a 402 queues the change instead of losing it', async () => {
 		const fake = new FakeToggl();
 		const { svc } = make(true, fake, { now: T0 });
