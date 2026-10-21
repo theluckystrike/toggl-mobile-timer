@@ -396,3 +396,77 @@ describe('ids in the URL path', () => {
 		expect(fake.calls).toHaveLength(0);
 	});
 });
+
+
+describe('replay lifecycle', () => {
+	const create = { step: 'create' as const, startMs: T0, stopMs: T0 + 60_000, description: 'Unsent work', projectId: null, tags: [] };
+	const stop = { step: 'stop' as const, workspaceId: 5, entryId: 7, startMs: T0 - 60_000, atMs: T0 };
+
+	it('settles an in-flight stop after disposal but retains later work for reload', async () => {
+		const fake = new FakeToggl();
+		const { svc, client, messages } = make(true, fake, { now: T0 });
+		svc.state.workspaceId = 5;
+		svc.state.plan = [stop, create];
+		let release!: (reply: HttpReply) => void;
+		client.opts.http = (request) => {
+			fake.calls.push(request);
+			return new Promise((resolve) => { release = resolve; });
+		};
+		let saved = '';
+		svc.deps.save = () => { saved = JSON.stringify(svc.state); };
+		const replay = svc.flushQueue();
+		expect(fake.calls.map((r) => r.method)).toEqual(['PUT']);
+		svc.dispose();
+		release({ status: 200, json: null, headers: {} });
+		// An unintended second request must also settle, so the baseline fails instead of hanging.
+		client.opts.http = fake.http;
+		expect(await replay).toBe(1);
+		expect(fake.calls.map((r) => r.method)).toEqual(['PUT']);
+		expect(svc.state.plan).toEqual([create]);
+		expect(messages.join(' ')).not.toMatch(/dropped/);
+		const reload = make(true, fake, { now: T0 });
+		reload.svc.state = normalizeState(JSON.parse(saved));
+		expect(await reload.svc.flushQueue()).toBe(1);
+		expect(fake.calls.filter((r) => r.method === 'POST')).toHaveLength(1);
+		expect(reload.svc.pending()).toBe(0);
+	});
+
+	it.each(['dispose', 'pro', 'token'])('retains a create when %s changes during workspace lookup', async (change) => {
+		const fake = new FakeToggl();
+		const { svc, client, messages } = make(true, fake, { now: T0 });
+		svc.state.plan = [create];
+		let release!: (reply: HttpReply) => void;
+		client.opts.http = (request) => {
+			fake.calls.push(request);
+			return new Promise((resolve) => { release = resolve; });
+		};
+		const replay = svc.flushQueue();
+		expect(fake.calls.map((r) => r.path)).toEqual(['/me']);
+		if (change === 'dispose') svc.dispose();
+		if (change === 'pro') svc.deps.isPro = () => false;
+		if (change === 'token') svc.deps.hasToken = () => false;
+		release({ status: 200, json: { default_workspace_id: 5 }, headers: {} });
+		client.opts.http = fake.http;
+		expect(await replay).toBe(0);
+		expect(fake.calls).toHaveLength(1);
+		expect(normalizeState(JSON.parse(JSON.stringify(svc.state))).plan).toEqual([create]);
+		expect(messages.join(' ')).not.toMatch(/dropped/);
+	});
+
+	it('does not retry a retained offline plan after disposal, including direct client calls', async () => {
+		const fake = new FakeToggl();
+		fake.mode = 'offline';
+		const clock = { now: T0 };
+		const { svc, client } = make(true, fake, clock);
+		svc.state.workspaceId = 5;
+		svc.state.plan = [create];
+		expect(await svc.flushQueue()).toBe(0);
+		svc.dispose();
+		fake.mode = 'ok';
+		clock.now += 3_600_000;
+		expect(await svc.flushQueue()).toBe(0);
+		expect(await client.create(5, {})).toMatchObject({ ok: false, kind: 'cancelled' });
+		expect(fake.calls).toHaveLength(1);
+		expect(svc.state.plan).toEqual([create]);
+	});
+});

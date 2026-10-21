@@ -2,14 +2,17 @@ import { Notice, Platform, Plugin, TFile, type Editor, type WorkspaceLeaf } from
 import type { SponsorsManager } from './license/index';
 import { createGitHubSponsors } from './license/github-obsidian';
 import { TogglClient, obsidianHttp } from './client';
+import { appSession, type TimerSession } from './lifecycle';
 import { entrySeconds, findProject, formatClock, formatHours, formatWait, noteLogEdit, noteDescription, noteProjectRef } from './logic';
 import { EditModal, StartModal } from './modals';
 import { SPONSORS, bindPro, isPro, resetPro } from './pro';
 import { renderReport } from './report';
-import { TimerService, emptyState, normalizeState, type StartRequest } from './service';
-import { DEFAULT_SETTINGS, TogglMobileTimerSettingTab, normalizeSettings, type TogglMobileTimerSettings } from './settings';
+import { TimerService, emptyState, type StartRequest } from './service';
+import { DEFAULT_SETTINGS, TogglMobileTimerSettingTab, type TogglMobileTimerSettings } from './settings';
 import { TimerView, VIEW_ID } from './view';
 import type { TimeEntry } from './logic';
+import { setupHello } from './hello/index';
+import WHATS_NEW from './whats-new.json';
 
 /** How often to ask the license state whether a check is due. It sends a request only when signed in and due (7 days). */
 const PRO_TICK_MS = 6 * 60 * 60 * 1000;
@@ -30,11 +33,18 @@ export default class TogglMobileTimerPlugin extends Plugin {
 	private statusEl: HTMLElement | null = null;
 	private ribbonEl: HTMLElement | null = null;
 	private saveTimer: number | null = null;
+	private unloaded = false;
+	private saving: Promise<void> = Promise.resolve();
+	private session: TimerSession | null = null;
+	private waiting = true;
 
 	async onload(): Promise<void> {
-		const saved = ((await this.loadData()) as SavedData | null) ?? {};
-		this.settings = normalizeSettings(saved.settings);
-		this.service = this.makeService(normalizeState(saved.state));
+		// First: "What's new" reads its state before the settings load (packages/hello). It does not wait.
+		setupHello(this, WHATS_NEW);
+		const session = await appSession(this.app, async () => (await this.loadData()) as SavedData | null);
+		this.session = session;
+		this.settings = session.data.settings;
+		this.service = this.makeService(session.data.state);
 		// No request here: a request needs a GitHub sign in first (Settings, Pro, Sign in with GitHub).
 		const pro = createGitHubSponsors(this.app, this.manifest.id, SPONSORS, this);
 		pro.init();
@@ -49,7 +59,19 @@ export default class TogglMobileTimerPlugin extends Plugin {
 		this.addCommands();
 		this.registerMarkdownCodeBlockProcessor('toggl-report', (source, el, ctx) => renderReport(this, source, el, ctx));
 		this.registerEvents();
+		session.claim({
+			settled: () => this.service.settled(),
+			write: (data) => this.saveData(data),
+			resume: () => {
+				if (this.unloaded) return;
+				this.waiting = false;
+				this.refreshChrome();
+				void this.service.refresh({ background: true });
+			},
+			failed: () => { if (!this.unloaded) new Notice('Timer save failed. Queued changes are kept in memory. Re-enable to retry.'); },
+		});
 		this.app.workspace.onLayoutReady(() => {
+			if (this.unloaded) return;
 			this.refreshChrome();
 			void this.service.refresh({ background: true });
 			void pro.refresh();
@@ -59,19 +81,23 @@ export default class TogglMobileTimerPlugin extends Plugin {
 	}
 
 	onunload(): void {
+		this.unloaded = true;
+		this.service.dispose();
 		if (this.saveTimer !== null) window.clearTimeout(this.saveTimer);
+		this.saveTimer = null;
 		void this.saveNow();
 		resetPro();
 	}
 
 	private makeService(state: ReturnType<typeof emptyState>): TimerService {
-		const client = new TogglClient({ getToken: () => this.token(), http: obsidianHttp, now: () => Date.now(), onBudget: () => this.scheduleSave() });
+		const client = new TogglClient({ getToken: () => this.token(), http: obsidianHttp, now: () => Date.now(), onBudget: () => this.scheduleSave(), canRequest: () => !this.waiting });
 		return new TimerService(
 			{
 				client,
 				now: () => Date.now(),
 				tzOffsetMin: () => -new Date().getTimezoneOffset(),
 				isPro: () => isPro(),
+				isWaiting: () => this.waiting,
 				hasToken: () => this.token() !== null,
 				notify: (m) => new Notice(m),
 				save: () => this.scheduleSave(),
@@ -95,6 +121,11 @@ export default class TogglMobileTimerPlugin extends Plugin {
 	// ------------------------------------------------------------ saving
 
 	private scheduleSave(): void {
+		if (this.unloaded) {
+			// The response already in flight may settle after unload. Persist its progress without a new timer.
+			void this.saveNow();
+			return;
+		}
 		if (this.saveTimer !== null) return;
 		this.saveTimer = window.setTimeout(() => {
 			this.saveTimer = null;
@@ -103,7 +134,10 @@ export default class TogglMobileTimerPlugin extends Plugin {
 	}
 
 	private async saveNow(): Promise<void> {
-		await this.saveData({ settings: this.settings, state: this.service.state });
+		// Every owner writes the shared current data through one App-scoped sequence.
+		const save = this.session?.persist() ?? Promise.resolve();
+		this.saving = save;
+		await save;
 	}
 
 	async persist(): Promise<void> {
@@ -262,6 +296,7 @@ export default class TogglMobileTimerPlugin extends Plugin {
 	pillText(): string {
 		const svc = this.service;
 		const status = svc.status();
+		if (status === 'waiting') return 'Previous Toggl request or save pending; changes stay queued';
 		if (status === 'nolink') return 'Add your Toggl API token in settings';
 		if (status === 'limited') return `Toggl limit reached, retry in ${formatWait(svc.waitMs())}`;
 		const run = svc.current();

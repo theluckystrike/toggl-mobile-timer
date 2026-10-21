@@ -48,7 +48,7 @@ export const obsidianHttp: Http = async (r) => {
 	}
 };
 
-export type FailKind = 'no-token' | 'blocked' | 'quota' | 'offline' | 'rate' | 'server' | 'auth' | 'http';
+export type FailKind = 'cancelled' | 'no-token' | 'blocked' | 'quota' | 'offline' | 'rate' | 'server' | 'auth' | 'http';
 export type Reply<T> = { ok: true; status: number; data: T } | { ok: false; kind: FailKind; status: number; waitMs: number; message: string };
 
 /** Failures that a queued change may retry later. Auth and other 4xx answers are not queued. */
@@ -76,9 +76,14 @@ export interface TogglOptions {
 	now: () => number;
 	/** Called after each request, so the plugin can save the budget. */
 	onBudget: () => void;
+	canRequest?: () => boolean;
 }
 
+export const CANCELLED = { ok: false, kind: 'cancelled', status: 0, waitMs: 0, message: 'Timer operation cancelled. Unsent changes are kept.' } as const;
+
 export class TogglClient {
+	private disposed = false;
+	private requests = new Set<Promise<unknown>>();
 	budgets: Record<BucketName, Budget> = { user: newBudget(), org: newBudget() };
 	opts: TogglOptions;
 
@@ -86,7 +91,25 @@ export class TogglClient {
 		this.opts = opts;
 	}
 
-	async call<T>(method: HttpRequest['method'], path: string, body: unknown, background: boolean): Promise<Reply<T>> {
+	/** requestUrl cannot abort an in-flight request. Let it settle, but never start another. */
+	dispose(): void {
+		this.disposed = true;
+	}
+
+	async settled(): Promise<void> {
+		await Promise.allSettled([...this.requests]);
+	}
+
+	call<T>(method: HttpRequest['method'], path: string, body: unknown, background: boolean): Promise<Reply<T>> {
+		const run = this.callOnce<T>(method, path, body, background);
+		this.requests.add(run);
+		void run.then(() => this.requests.delete(run), () => this.requests.delete(run));
+		return run;
+	}
+
+	private async callOnce<T>(method: HttpRequest['method'], path: string, body: unknown, background: boolean): Promise<Reply<T>> {
+		if (this.disposed) return CANCELLED;
+		if (this.opts.canRequest?.() === false) return fail('blocked', 0, 0, 'Previous Toggl request pending. Changes stay queued until it settles.');
 		const token = this.opts.getToken();
 		if (!token) return fail('no-token', 0, 0, 'Add your Toggl API token in the plugin settings.');
 		const bucket = bucketOf(path);

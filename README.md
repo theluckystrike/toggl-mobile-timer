@@ -1,8 +1,6 @@
 # Mobile Timer for Toggl Track
 
-Start, stop and switch your Toggl Track timer from a note on phone, tablet or desktop. See the running timer and today's total. The plugin is made for the Toggl free plan: 30 requests an hour.
-
-It is not affiliated with Toggl. You need your own Toggl Track account.
+Start, stop and switch your Toggl Track timer from a note on phone, tablet or desktop. See the running timer and today's total.
 
 <img src="https://raw.githubusercontent.com/theluckystrike/toggl-mobile-timer/HEAD/docs/mobile-timer.gif" alt="The timer panel with no timer, the Start timer window, a running timer of 27 minutes, and the timer stopped" width="720">
 
@@ -10,7 +8,7 @@ It is not affiliated with Toggl. You need your own Toggl Track account.
 
 ### Start, stop and switch a timer
 
-Run "Start timer", enter a description, then select Start or press Enter. "Stop timer" stops it. "Switch timer" stops it and starts another. The ribbon button starts or stops. "Start timer for this note" sends the note name to Toggl at once. The Start window also offers it. A setting turns that off.
+Run "Start timer", enter a description, then select Start or press Enter. "Stop timer" stops it. "Switch timer" stops it and starts another. The ribbon button starts or stops. "Start timer for this note" sends the note name to Toggl at once. The Start window also offers it.
 
 Set one default project for free timers.
 
@@ -32,7 +30,7 @@ This free command uses cached entries without a request. Refresh if entries are 
 
 ### The status bar on desktop
 
-On desktop the status bar shows the timer and today's total. Select it to open the panel. Mobile has no status bar.
+On desktop the status bar shows the timer and today's total. Select it to open the panel.
 
 <img src="https://raw.githubusercontent.com/theluckystrike/toggl-mobile-timer/HEAD/docs/status-bar.png" alt="The status bar with a running timer, its description and today's total" width="720">
 
@@ -46,7 +44,7 @@ After HTTP 402 the plugin waits until the window that Toggl reports is over. Aft
 
 ### Project and tag pickers (Pro)
 
-With Pro the Start window has a project list and a tags field. A note can set its own project: add a property named `toggl-project` with the name of a project, and "Start timer for this note" uses it.
+The Start window has a project list and a tags field. A note can set its own project: add a property named `toggl-project` with the name of a project, and "Start timer for this note" uses it.
 
 <img src="https://raw.githubusercontent.com/theluckystrike/toggl-mobile-timer/HEAD/docs/project-picker.png" alt="The Start timer window with a project list set to Code and a tags field" width="720">
 
@@ -71,13 +69,13 @@ Each finished entry in the panel has an edit button. The window changes the desc
 
 ### Offline queue (Pro)
 
-With no connection, or after a 402, Pro holds up to 40 changes and shows them at once. It sends them when Toggl is reachable. Without Pro, an offline action changes nothing.
+Pro keeps up to 40 offline changes, including after HTTP 402. Replay needs Pro and a token. Re-enable pauses remote work until issued requests settle; the panel explains why. Lost responses or crashes can duplicate entries.
 
 <img src="https://raw.githubusercontent.com/theluckystrike/toggl-mobile-timer/HEAD/docs/offline-queue.png" alt="The timer panel with a timer started offline and a line that says one change waits to be sent" width="720">
 
 ## Install
 
-After listing, search for "Mobile Timer for Toggl Track" in Community plugins. Select Install, then Enable.
+Search for "Mobile Timer for Toggl Track" in Community plugins. Select Install, then Enable.
 
 Copy `main.js`, `manifest.json` and `styles.css` from the latest release into `<vault>/.obsidian/plugins/toggl-mobile-timer/`. Enable the plugin.
 
@@ -89,13 +87,15 @@ The token stays in the secret storage of Obsidian, not in a note or in `data.jso
 
 ## Settings
 
-Check connection uses 1 request. Load projects, then set a Default project. Use the note title as the description controls the note name. Ask Toggl again after sets cache age from 5 to 60 minutes. Week starts on sets the report week. Note log heading sets the log section.
+After a minor or major update, this plugin opens one What's new tab in the background. The tab and settings card suggest other NoteMods plugins and Zovo Chat and link to notemods.com for feedback ([privacy](https://notemods.com/privacy/)). The tab sends no data. Turn the tab off in Settings.
+
+Check connection uses 1 request. Load projects, then set a Default project. Ask Toggl again after sets cache age from 5 to 60 minutes. Week starts on sets the report week. Note log heading sets the log section.
 
 ## FAQ
 
 ### Does it work on a phone?
 
-Yes. It uses no Node module. On a phone the panel opens in a tab and no status bar item is added. Unit tests check both. The screenshots show desktop.
+Yes. It uses no Node module. On a phone the panel opens in a tab and no status bar item is added. The screenshots show desktop.
 
 ### Does the timer run when the app is closed?
 
@@ -107,11 +107,11 @@ Entries that start yesterday or today, up to 300, cut at midnight of your local 
 
 ### Do note logs change after I edit an entry in Toggl?
 
-No. Delete the line with its marker, refresh, then log again. The command uses the open note. It does not create a daily note.
+No. Delete the line with its marker, refresh, then log again. The command does not create a daily note.
 
 ### Does the token sync to my other devices?
 
-Obsidian's secret storage API holds the token. Plugin settings hold no token. Select or enter a token on each device.
+No. Select or enter a token on each device.
 
 ## Limits
 
@@ -133,7 +133,7 @@ After a successful check, Pro can work offline for up to 14 days. Sign out or a 
 
 ## Support
 
-Report bugs and feature requests in this repository's issue tracker. To support the work, use [GitHub Sponsors](https://github.com/sponsors/theluckystrike).
+To support the work, use [GitHub Sponsors](https://github.com/sponsors/theluckystrike).
 
 ```
 npm ci

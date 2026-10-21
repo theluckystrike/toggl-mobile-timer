@@ -1,6 +1,6 @@
 // Timer service: the state, the cache and the actions. It has no Obsidian import: the plugin gives it a client,
 // a clock and a few callbacks, so vitest runs it against a fake Toggl.
-import { RETRYABLE, type Reply, type TogglClient } from './client';
+import { CANCELLED, RETRYABLE, type Reply, type TogglClient } from './client';
 import {
 	APP_NAME,
 	createBody,
@@ -132,6 +132,8 @@ export interface ServiceDeps {
 	save: () => void;
 	ttlMs: () => number;
 	weekStart: () => number;
+	/** An earlier plugin owner is still reconciling an issued request. */
+	isWaiting?: () => boolean;
 }
 
 export interface StartRequest {
@@ -140,7 +142,7 @@ export interface StartRequest {
 	tags: string[];
 }
 
-export type Status = 'nolink' | 'offline' | 'limited' | 'running' | 'idle';
+export type Status = 'waiting' | 'nolink' | 'offline' | 'limited' | 'running' | 'idle';
 
 export interface Report {
 	label: string;
@@ -155,6 +157,8 @@ export class TimerService {
 	state: TimerState;
 	deps: ServiceDeps;
 	private listeners = new Set<() => void>();
+	private disposed = false;
+	private operations = new Set<Promise<unknown>>();
 	private offline = false;
 	private flushing = false;
 	private reports = new Map<string, { entries: TimeEntry[]; at: number }>();
@@ -166,6 +170,31 @@ export class TimerService {
 		this.deps = deps;
 		this.state = state;
 		deps.client.budgets = state.budget;
+	}
+
+	/** Keep settled request results for persistence, but stop all later network operations and UI updates. */
+	dispose(): void {
+		this.disposed = true;
+		this.deps.client.dispose();
+		this.listeners.clear();
+	}
+
+	private track<T>(run: Promise<T>): Promise<T> {
+		this.operations.add(run);
+		void run.then(() => this.operations.delete(run), () => this.operations.delete(run));
+		return run;
+	}
+
+	/** Includes service reconciliation after HTTP, rather than only transport settlement. */
+	async settled(): Promise<void> {
+		do {
+			await Promise.allSettled([...this.operations]);
+			await this.deps.client.settled();
+		} while (this.operations.size > 0);
+	}
+
+	private canReplay(): boolean {
+		return !this.disposed && !this.deps.isWaiting?.() && this.deps.isPro() && this.deps.hasToken();
 	}
 
 	onChange(cb: () => void): () => void {
@@ -209,6 +238,7 @@ export class TimerService {
 	}
 
 	status(): Status {
+		if (this.deps.isWaiting?.()) return 'waiting';
 		if (!this.deps.hasToken()) return 'nolink';
 		// No connection comes first: its short retry wait is not a Toggl limit.
 		if (this.offline) return 'offline';
@@ -235,6 +265,7 @@ export class TimerService {
 	// ------------------------------------------------------------ requests
 
 	private fail(r: Extract<Reply<unknown>, { ok: false }>, quiet: boolean): void {
+		if (r.kind === 'cancelled') return;
 		this.offline = r.kind === 'offline';
 		if (!quiet) this.deps.notify(r.message);
 		this.changed();
@@ -254,7 +285,7 @@ export class TimerService {
 	refresh(opts: { force?: boolean; background?: boolean } = {}): Promise<boolean> {
 		// A refresh that is on its way answers a second call too: layout ready, a return to the app and a button can come together.
 		if (this.refreshing) return this.refreshing;
-		const run = this.refreshOnce(opts).finally(() => {
+		const run = this.track(this.refreshOnce(opts)).finally(() => {
 			this.refreshing = null;
 		});
 		this.refreshing = run;
@@ -294,7 +325,11 @@ export class TimerService {
 		if (e && isRunning(e)) this.applyEntry(e);
 	}
 
-	async loadProjects(force = false): Promise<Project[]> {
+	loadProjects(force = false): Promise<Project[]> {
+		return this.track(this.loadProjectsOnce(force));
+	}
+
+	private async loadProjectsOnce(force = false): Promise<Project[]> {
 		const now = this.deps.now();
 		if (!force && this.state.projectsAt !== null && now - this.state.projectsAt < LIST_TTL_MS) return this.state.projects;
 		const r = await this.deps.client.projects();
@@ -308,7 +343,11 @@ export class TimerService {
 		return this.state.projects;
 	}
 
-	async loadTags(force = false): Promise<string[]> {
+	loadTags(force = false): Promise<string[]> {
+		return this.track(this.loadTagsOnce(force));
+	}
+
+	private async loadTagsOnce(force = false): Promise<string[]> {
 		const now = this.deps.now();
 		if (!force && this.state.tagsAt !== null && now - this.state.tagsAt < LIST_TTL_MS) return this.state.tags;
 		const r = await this.deps.client.tags();
@@ -340,7 +379,11 @@ export class TimerService {
 		e.duration = Math.max(0, Math.round((stopMs - Date.parse(e.start)) / 1000));
 	}
 
-	async start(req: StartRequest): Promise<boolean> {
+	start(req: StartRequest): Promise<boolean> {
+		return this.track(this.startOnce(req));
+	}
+
+	private async startOnce(req: StartRequest): Promise<boolean> {
 		if (!this.deps.hasToken()) {
 			this.deps.notify('Add your Toggl API token in the plugin settings.');
 			return false;
@@ -359,7 +402,11 @@ export class TimerService {
 		return this.failOrQueue(r, op);
 	}
 
-	async stop(): Promise<boolean> {
+	stop(): Promise<boolean> {
+		return this.track(this.stopOnce());
+	}
+
+	private async stopOnce(): Promise<boolean> {
 		const running = this.current();
 		if (!running) {
 			this.deps.notify('No timer is running.');
@@ -422,19 +469,23 @@ export class TimerService {
 	// ------------------------------------------------------------ queue replay (Pro)
 
 	/** Sends queued changes in the fewest requests. Stops at the first retryable failure and keeps the rest. */
-	async flushQueue(): Promise<number> {
+	flushQueue(): Promise<number> {
+		return this.track(this.flushQueueOnce());
+	}
+
+	private async flushQueueOnce(): Promise<number> {
 		const sent = await this.sendQueue();
-		if (sent > 0 && this.state.plan.length === 0) await this.refresh({ force: true, background: true });
+		if (!this.disposed && sent > 0 && this.state.plan.length === 0) await this.refresh({ force: true, background: true });
 		return sent;
 	}
 
 	/** Sends the queue and tells the user. It does not refresh, so refreshOnce can call it. */
 	private async sendQueue(): Promise<number> {
-		if (this.flushing || !this.deps.isPro()) return 0;
+		if (this.flushing || !this.canReplay()) return 0;
 		this.flushing = true;
 		let sent = 0;
 		try {
-			for (let round = 0; round < 3; round++) {
+			for (let round = 0; round < 3 && this.canReplay(); round++) {
 				if (this.state.plan.length === 0 && this.state.queue.length > 0) {
 					this.state.plan = planReplay(this.state.queue, this.state.queueBase);
 					this.state.queue = [];
@@ -449,21 +500,22 @@ export class TimerService {
 		} finally {
 			this.flushing = false;
 		}
-		if (sent > 0 && this.state.plan.length === 0) this.deps.notify(`Sent ${sent} queued ${sent === 1 ? 'change' : 'changes'} to Toggl.`);
+		if (!this.disposed && sent > 0 && this.state.plan.length === 0) this.deps.notify(`Sent ${sent} queued ${sent === 1 ? 'change' : 'changes'} to Toggl.`);
 		return sent;
 	}
 
 	private async runPlan(): Promise<number> {
 		let sent = 0;
-		for (let i = 0; i < 40 && this.state.plan.length > 0; i++) {
+		for (let i = 0; i < 40 && this.state.plan.length > 0 && this.canReplay(); i++) {
 			const step = this.state.plan[0];
 			if (!step) break;
 			const r = await this.runStep(step);
+			if (!r.ok && r.kind === 'cancelled') break;
 			if (!r.ok && RETRYABLE.has(r.kind)) {
 				this.fail(r, true);
 				break;
 			}
-			if (!r.ok) this.deps.notify(`A queued change was dropped: ${r.message}`);
+			if (!r.ok && !this.disposed) this.deps.notify(`A queued change was dropped: ${r.message}`);
 			this.state.plan.shift();
 			sent++;
 			this.changed();
@@ -472,11 +524,13 @@ export class TimerService {
 	}
 
 	private async runStep(step: PlanStep): Promise<Reply<unknown>> {
+		if (!this.canReplay()) return CANCELLED;
 		if (step.step === 'stop') {
 			const secs = Math.max(0, Math.round((step.atMs - step.startMs) / 1000));
 			return this.deps.client.update(step.workspaceId, step.entryId, { start: isoSeconds(step.startMs), stop: isoSeconds(step.atMs), duration: secs });
 		}
 		const ws = await this.workspace();
+		if (!this.canReplay()) return CANCELLED;
 		if (!ws.ok) return ws;
 		const r = await this.deps.client.create(ws.data, createBody({ workspaceId: ws.data, description: step.description, projectId: step.projectId, tags: step.tags, startMs: step.startMs, stopMs: step.stopMs }));
 		if (r.ok && step.stopMs === null) {
@@ -492,7 +546,11 @@ export class TimerService {
 
 	// ------------------------------------------------------------ edit and delete (Pro)
 
-	async editEntry(id: number, patch: { description: string; projectId: number | null; startMs: number; stopMs: number }): Promise<boolean> {
+	editEntry(id: number, patch: { description: string; projectId: number | null; startMs: number; stopMs: number }): Promise<boolean> {
+		return this.track(this.editEntryOnce(id, patch));
+	}
+
+	private async editEntryOnce(id: number, patch: { description: string; projectId: number | null; startMs: number; stopMs: number }): Promise<boolean> {
 		const e = this.state.entries.find((x) => x.id === id);
 		if (!e || e.id < 0) return false;
 		const body = createBody({ workspaceId: e.workspace_id, description: patch.description, projectId: patch.projectId, tags: e.tags ?? [], startMs: patch.startMs, stopMs: patch.stopMs });
@@ -506,7 +564,11 @@ export class TimerService {
 		return true;
 	}
 
-	async deleteEntry(id: number): Promise<boolean> {
+	deleteEntry(id: number): Promise<boolean> {
+		return this.track(this.deleteEntryOnce(id));
+	}
+
+	private async deleteEntryOnce(id: number): Promise<boolean> {
 		const e = this.state.entries.find((x) => x.id === id);
 		if (!e || e.id < 0) return false;
 		const r = await this.deps.client.remove(e.workspace_id, id);
@@ -522,7 +584,11 @@ export class TimerService {
 	// ------------------------------------------------------------ report (Pro)
 
 	/** Hours by project, day or description. "today" and "yesterday" come from the cache when they can; other ranges cost one request each 15 minutes. */
-	async report(spec: { range: string; by: GroupBy }, force = false): Promise<Report | { error: string }> {
+	report(spec: { range: string; by: GroupBy }, force = false): Promise<Report | { error: string }> {
+		return this.track(this.reportOnce(spec, force));
+	}
+
+	private async reportOnce(spec: { range: string; by: GroupBy }, force = false): Promise<Report | { error: string }> {
 		const now = this.deps.now();
 		const tz = this.deps.tzOffsetMin();
 		const range = rangeFor(spec.range, now, tz, this.deps.weekStart());

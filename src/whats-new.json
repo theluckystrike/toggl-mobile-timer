@@ -1,0 +1,34 @@
+{
+	"id": "toggl-mobile-timer",
+	"name": "Mobile Timer for Toggl Track",
+	"version": "1.2.0",
+	"changes": [
+		"New Send feedback command. It opens a page where you can report a problem or suggest an idea.",
+		"Coordinates timer requests and saved queue progress across disable and re-enable.",
+		"A refresh that sends the offline queue no longer hangs the timer."
+	],
+	"changes_user": [
+		"New Send feedback command. It opens a page where you can report a problem or suggest an idea.",
+		"Turning the plugin off and on again no longer loses timer requests or queued progress.",
+		"A refresh that sends queued offline time no longer freezes the timer."
+	],
+	"tip": "Add a toggl-project property to a note so Start timer for this note uses it.",
+	"thanks": "Hi, I am Michael, a solo developer in Poland. Mobile Timer for Toggl Track is one of over 100 small plugins that I make. Thank you for using it to track your time.",
+	"related": [
+		{
+			"id": "clockify-mobile-timer",
+			"name": "Mobile Timer for Clockify",
+			"blurb": "Control your Clockify timer and see the daily total from a note."
+		},
+		{
+			"id": "task-date-links",
+			"name": "Task Date Links",
+			"blurb": "Link completed tasks to their daily notes for backlinks."
+		},
+		{
+			"id": "task-field-labels",
+			"name": "Task Field Labels",
+			"blurb": "Show text labels for dates, priority, and recurrence in rendered tasks."
+		}
+	]
+}

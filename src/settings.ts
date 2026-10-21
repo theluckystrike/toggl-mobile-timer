@@ -3,6 +3,7 @@ import { sponsorsSettingItems } from './license/github-obsidian';
 import { PRO_UI, isPro } from './pro';
 import { formatWait, logHeading } from './logic';
 import type TogglMobileTimerPlugin from './main';
+import { helloSettingItems } from './hello/settings';
 
 export interface TogglMobileTimerSettings {
 	/** Name of the secret in Obsidian secret storage. The token itself is never in data.json. */
@@ -61,7 +62,7 @@ export class TogglMobileTimerSettingTab extends PluginSettingTab {
 	}
 
 	async setControlValue(key: string, value: unknown): Promise<void> {
-		this.plugin.settings = normalizeSettings({ ...this.plugin.settings, [key]: value });
+		Object.assign(this.plugin.settings, normalizeSettings({ ...this.plugin.settings, [key]: value }));
 		await this.plugin.persist();
 		this.plugin.refreshChrome();
 	}
@@ -80,6 +81,11 @@ export class TogglMobileTimerSettingTab extends PluginSettingTab {
 	}
 
 	getSettingDefinitions(): SettingDefinitionItem[] {
+		// The product rows, then the "More from NoteMods" card (packages/hello).
+		return [...this.productSettingDefinitions(), ...helloSettingItems()];
+	}
+
+	productSettingDefinitions(): SettingDefinitionItem[] {
 		return [
 			...(this.plugin.pro ? sponsorsSettingItems(this.plugin.pro, PRO_UI) : []),
 			{
