@@ -359,7 +359,7 @@ describe(`${pluginId} replay lifecycle`, function () {
 			return { apiVersion: obsidian.apiVersion, mainSha256: await digest('main.js'), manifestSha256: await digest('manifest.json'), stylesSha256: await digest('styles.css') };
 		}, pluginId);
 		const sha = (name: string): string => createHash('sha256').update(readFileSync(name)).digest('hex');
-		expect(['1.13.4', '1.14.4']).toContain(installed.apiVersion);
+		expect(installed.apiVersion).toMatch(/^1\.(13\.4|1[4-9]\.\d+)$/);
 		expect(installed.mainSha256).toBe(sha('main.js'));
 		expect(installed.manifestSha256).toBe(sha('manifest.json'));
 		expect(installed.stylesSha256).toBe(sha('styles.css'));

@@ -1,7 +1,7 @@
 {
 	"id": "toggl-mobile-timer",
 	"name": "Mobile Timer for Toggl Track",
-	"version": "1.2.0",
+	"version": "1.2.1",
 	"minAppVersion": "1.13.4",
 	"description": "Starts, stops and switches your Toggl Track timer from a note, on phone and desktop, and shows the running timer and today's total.",
 	"author": "Michael Lip",

@@ -5,7 +5,7 @@ import { TogglClient, obsidianHttp } from './client';
 import { appSession, type TimerSession } from './lifecycle';
 import { entrySeconds, findProject, formatClock, formatHours, formatWait, noteLogEdit, noteDescription, noteProjectRef } from './logic';
 import { EditModal, StartModal } from './modals';
-import { SPONSORS, bindPro, isPro, resetPro } from './pro';
+import { SPONSORS, bindPro, isPro, resetPro, proNotice } from './pro';
 import { renderReport } from './report';
 import { TimerService, emptyState, type StartRequest } from './service';
 import { DEFAULT_SETTINGS, TogglMobileTimerSettingTab, type TogglMobileTimerSettings } from './settings';
@@ -177,7 +177,7 @@ export default class TogglMobileTimerPlugin extends Plugin {
 	}
 
 	needsPro(feature: string): void {
-		new Notice(`${feature} is a pro feature. Sponsor on GitHub, then sign in from the plugin settings.`);
+		proNotice(`${feature} is a pro feature.`);
 	}
 
 	private onProChange(): void {
