@@ -81,7 +81,7 @@ Copy `main.js`, `manifest.json` and `styles.css` from the latest release into `<
 
 ## Usage
 
-Copy your API token from your Toggl Track profile settings. In the plugin settings, select the token field, create a secret and paste the token. Select Check connection. Then open a note and run "Start timer".
+Copy your API token from your Toggl Track profile settings. In the plugin settings, select the token field, create a secret and paste the token. Select Check connection. Open a note and run "Start timer".
 
 The token stays in the secret storage of Obsidian, not in a note or in `data.json`. A timer that you start in the Toggl app shows after the next refresh.
 
@@ -95,7 +95,7 @@ Check connection uses 1 request. Load projects, then set a Default project. Ask 
 
 ### Does it work on a phone?
 
-Yes. It uses no Node module. On a phone the panel opens in a tab and no status bar item is added. The screenshots show desktop.
+Yes. It uses no Node module. On a phone the panel opens in a tab and no status bar item is added.
 
 ### Does the timer run when the app is closed?
 
@@ -121,6 +121,8 @@ The plugin does not run in the background and does not edit projects or clients.
 
 The core features are free. Pro features need a GitHub Sponsors sponsorship of theluckystrike: $5 a month or more, or $15 once. A total payment of $15 meets the payment requirement for Pro without further payment. Sign-in and the checks below still apply. Your notes stay readable and editable with or without Pro.
 
+[One payment turns on Pro in every NoteMods plugin](https://notemods.com/pro/).
+
 GitHub handles the payment. Sponsor at https://github.com/sponsors/theluckystrike?frequency=one-time&metadata_source=toggl-mobile-timer. You need a Toggl Track account for every feature, free or Pro. Pro also needs the GitHub account that sponsors.
 
 Mobile Timer for Toggl Track talks to Toggl Track through its public API at `https://api.track.toggl.com/api/v9`, only after you save a Toggl API token in the settings. Each request carries the token as HTTP Basic authentication in the Authorization header. When you start, stop, edit or delete a timer, it sends the time entry: the description, the project number, the tags, the start and stop time, the workspace number and the plugin name. When you start a timer from a note, the title of the note becomes the description and is sent to Toggl. That happens when you run "Start timer for this note", and when you select Start in the Start window, which opens with the title in its box. The title is the file name without the folder and the extension, cut at 120 characters. Turn off "Use the note title as the description" in the settings to send no title. It sends no note content, no folder path and no other vault data, and it has no telemetry. It reads your name, workspace, projects, tags, running timer and time entries from Toggl when Obsidian opens, when you return to the app or go online, when you open the panel or, with Pro, the Start window, when you select Refresh, Check connection or Load projects, and when a report block draws. Mobile Timer for Toggl Track is not affiliated with, made by or approved by Toggl. Toggl and Toggl Track are marks of their owner.
@@ -133,7 +135,7 @@ After a successful check, Pro can work offline for up to 14 days. Sign out or a 
 
 ## Support
 
-To support the work, use [GitHub Sponsors](https://github.com/sponsors/theluckystrike?frequency=one-time&metadata_source=toggl-mobile-timer).
+Support the work on [GitHub Sponsors](https://github.com/sponsors/theluckystrike?frequency=one-time&metadata_source=toggl-mobile-timer).
 
 ```
 npm ci
