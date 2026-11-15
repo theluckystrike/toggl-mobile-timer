@@ -23,7 +23,7 @@ function environment() {
 		addCommand(): void {} registerMarkdownCodeBlockProcessor(): void {} registerEvent(): void {}
 		registerInterval(): void {} registerDomEvent(): void {}
 	}
-	const workspace = { onLayoutReady: () => undefined, getLeavesOfType: () => [] };
+	const workspace = { onLayoutReady: () => undefined, getLeavesOfType: () => [], containerEl: { doc: document } };
 	const app = { secretStorage: { getSecret: () => null }, workspace };
 	return {
 		owners,

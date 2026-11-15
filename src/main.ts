@@ -161,8 +161,8 @@ export default class TogglMobileTimerPlugin extends Plugin {
 	private registerEvents(): void {
 		// A phone suspends the app: the elapsed time is derived from the start time on Toggl, and the data is refreshed
 		// only when the cache is older than the refresh setting.
-		this.registerDomEvent(document, 'visibilitychange', () => {
-			if (document.visibilityState === 'visible') void this.service.refresh({ background: true });
+		this.registerDomEvent(this.app.workspace.containerEl.doc, 'visibilitychange', () => {
+			if (this.app.workspace.containerEl.doc.visibilityState === 'visible') void this.service.refresh({ background: true });
 		});
 		this.registerDomEvent(window, 'online', () => void this.service.refresh({ force: true, background: true }));
 		this.registerDomEvent(window, 'offline', () => this.refreshChrome());
@@ -326,7 +326,7 @@ export default class TogglMobileTimerPlugin extends Plugin {
 
 	/** Each second while the app is visible: clock and day total from the start time on Toggl. No request. */
 	tick(): void {
-		if (document.hidden) return;
+		if (this.app.workspace.containerEl.doc.hidden) return;
 		const svc = this.service;
 		const run = svc.current();
 		if (this.statusEl) {
